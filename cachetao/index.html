@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+
+  <link rel="manifest" href="./manifest.webmanifest">
+  <meta name="theme-color" content="#0b3b22">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Cachetão Pro">
+
+  <meta charset="UTF-8" />
+  <title>♠ Cachetão Pro ♠</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  
+  <link rel="stylesheet" href="css/layout.css" />
+  <link rel="stylesheet" href="css/game.css" />
+  <link rel="stylesheet" href="css/mobile-game.css" />
+  <link rel="stylesheet" href="css/mobile-home.css" />
+  <link rel="stylesheet" href="css/mobile-tables.css" />
+  <link rel="stylesheet" href="css/mobile.css" />
+</head>
+
+<body>
+<!--- Menu--->
+
+  <!-- HOME -->
+  <div id="homeScreen">
+
+    <div id="topNav" class="top-nav" style="display:none;">
+      <div class="top-nav-right">
+        <a href="#" id="navHome">
+          <span class="nav-icon">🏠</span>
+          <span>Início</span>
+        </a>
+
+        <a href="./how-to-play.html">
+          <span class="nav-icon">📖</span>
+          <span>Como jogar</span>
+        </a>
+
+        <a href="#" id="navBuyChips">
+          <span class="nav-icon">💰</span>
+          <span>Comprar fichas</span>
+        </a>
+
+        <a href="#" id="navDeposit">
+          <span class="nav-icon">💵</span>
+          <span>Fazer depósito</span>
+        </a>
+
+        <a href="#" id="navProfile">
+          <span class="nav-icon">👤</span>
+          <span>Perfil</span>
+        </a>
+
+        <a href="#" id="navLogout">
+          <span class="nav-icon">🚪</span>
+          <span>Sair</span>
+        </a>
+      </div>
+    </div>
+
+    <div class="home-shell">
+
+      <div class="home-logo">
+
+        <picture>
+
+          <!-- MOBILE -->
+          <source
+            media="(max-width:900px)"
+            srcset="/assets/image/logo-mobile.png">
+
+          <!-- DESKTOP -->
+          <img
+            src="/assets/image/logo-desktop.png"
+            alt="Cachetão Pro">
+
+        </picture>
+
+      </div>
+
+      <div class="home-menu">
+        <!---<button type="button" id="btnSettings" style="display:none;">
+          <span class="btn-icon">⚙</span>
+          <span class="btn-text">Configurações</span>
+        </button>--->
+
+        <button type="button" id="btnLogin">
+          <span class="btn-icon">🔐</span>
+          <span class="btn-text">Login</span>
+        </button>
+
+        <button type="button" id="btnSignup">
+          <span class="btn-icon">✚</span>
+          <span class="btn-text">Cadastre-se</span>
+        </button>
+
+        <button type="button" id="btnTrain" style="display:none;">
+          <span class="btn-icon">👤</span>
+          <span class="btn-text">Perfil</span>
+        </button>
+
+        <button type="button" id="btnBuyChips" class="primary" style="display:none;">
+          <span class="btn-icon">💰</span>
+          <span class="btn-text">Comprar fichas</span>
+        </button>
+
+        <button type="button" id="btnDeposit" class="primary" style="display:none;">
+          <span class="btn-icon">💵</span>
+          <span class="btn-text">Fazer depósito</span>
+        </button>
+
+        <button type="button" id="btnHowToPlay" class="mobile-only-home-btn">
+          <span class="btn-icon">📖</span>
+          <span class="btn-text">Como Jogar</span>
+        </button>
+
+        <button type="button" id="btnContact" class="mobile-only-home-btn">
+          <span class="btn-icon">✉</span>
+          <span class="btn-text">Contato</span>
+        </button>
+
+        <button type="button" id="btnCachetao" class="primary" style="display:none;">
+          <span class="btn-icon">♠</span>
+          <span class="btn-text">Jogar Cachetão Pro</span>
+        </button>
+
+        <button type="button" id="btnLogout" style="display:none;">
+          <span class="btn-icon">↪</span>
+          <span class="btn-text">Sair</span>
+        </button>
+      </div>
+
+      <div class="home-status-wrap">
+        <div class="home-usercard" id="homeUserCard">
+          <div class="home-usercard-row">
+            <img id="homeUserAvatar" class="home-user-avatar" src="/assets/avatars/avatar-01.png" alt="Avatar" />
+            <div class="home-user-meta">
+              <div id="homeUserName">Visitante</div>
+              <div id="homeUserBalance">Fichas: —</div>
+              <div id="homeUserCashBalance">Saldo: R$ —</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="home-status">
+          <div class="panel-title">Status Online</div>
+          <div class="panel-row"><span>Jogadores online</span><strong id="onlinePlayers">—</strong></div>
+          <div class="panel-row"><span>Mesas abertas</span><strong id="openTables">—</strong></div>
+        
+        </div>
+      </div>
+
+    </div>
+
+    <div class="home-banner">
+  <div class="home-banner-text">
+    <div class="home-banner-title">♣ ♠ CACHETÃO PRO ♣ ♠</div>
+    <div class="home-banner-sub">♥ ♦ O jogo de cartas que te desafia a cada rodada. ♠ ♦</div>
+  </div>
+
+  <img class="home-banner-cards" src="/assets/image/logo-cachetao.png" alt="Cartas" />
+</div>
+    <div class="home-footer">
+      <a href="./terms.html">Termos de Uso</a>
+
+      <span>© Cachetão Pro</span>
+
+      <a href="./privacy.html">Política de Privacidade</a>
+
+      <a href="./contact.html">Contato</a>
+    </div>
+  </div>
+
+  
+
+  <!-- TELA DE MESAS -->
+  <div id="tablesScreen" style="display:none;">
+    <div class="tables-header">
+      <div class="tables-title">
+           ♥ Cachetão Pro ♠
+      </div>
+
+      <div id="tablesVariantSwitch"></div>
+    </div>
+
+    <div id="tablesGrid"></div>
+
+    <button id="startGame" style="display:none;">Iniciar jogo</button>
+  </div>
+
+  <!-- JOGO -->
+  <div id="game" style="display:none;">
+
+  <div id="playerInfo"></div>
+    <div id="playerInfo"></div>
+
+    <div id="deck-area">
+  <div id="deck-row">
+    <div id="monte" class="pile-slot monte-horizontal"></div>
+
+    <div id="pot-area">
+      <div class="chip-stack" aria-label="Pote 500"></div>
+      <div class="pote-label">Pote: 500</div>
+    </div>
+
+    <div id="lixo" class="pile-slot"></div>
+
+    <div id="vira-area" class="pile-slot">
+      <div id="vira-card" class="vira-card-real"></div>
+    </div>
+  </div>
+
+  <div id="vira-joker">Coringas: —</div>
+</div>
+
+    <div id="table"></div>
+
+    <div id="bottomArea">
+      <div id="hand"></div>
+      <div id="scoreboard"></div>
+
+      <div id="sortPanel">
+
+      <div id="sortPanel" aria-label="Ordenação das cartas">
+  <div class="sort-title">Ordenar:</div>
+
+  <div class="sort-buttons">
+    <button
+      type="button"
+      class="sort-btn"
+      title="Ordenar por valor"
+      aria-label="Ordenar por valor"
+      onclick="window.setHandSort('value')"
+    >
+      <span class="sort-card sort-card-value" aria-hidden="true">
+      <span class="sort-values-grid">
+        <span class="black">A</span>
+        <span class="red">8</span>
+        <span class="red">K</span>
+        <span class="black">4</span>
+      </span>
+    </span>
+    </button>
+
+    <button
+      type="button"
+      class="sort-btn"
+      title="Ordenar por naipe"
+      aria-label="Ordenar por naipe"
+      onclick="window.setHandSort('suit')"
+    >
+      <span class="sort-card sort-card-suit" aria-hidden="true">
+        <span class="sort-suit-column">
+          <span class="red">♥</span>
+          <span class="black">♣</span>
+        </span>
+
+        <span class="sort-suit-column">
+          <span class="red">♦</span>
+          <span class="black">♠</span>
+        </span>
+      </span>
+    </button>
+  </div>
+</div>
+
+    </div>
+    </div>
+  </div>
+
+
+  <div id="walletModal" class="wallet-modal hidden">
+    <div class="wallet-card">
+      <button id="walletCloseBtn" class="wallet-close" type="button">×</button>
+
+      <h2 id="walletTitle">Comprar fichas</h2>
+      <p id="walletSubtitle" class="wallet-subtitle">
+        Escolha um pacote e pague via PIX.
+      </p>
+
+      <div id="walletPackages" class="wallet-packages"></div>
+
+      <div id="walletPixArea" class="wallet-pix-area hidden">
+        <h3>PIX gerado</h3>
+
+        <img id="walletPixQrImg" class="wallet-pix-qr" alt="QR Code PIX" />
+
+        <textarea id="walletPixCode" readonly></textarea>
+
+        <button id="walletCopyPixBtn" class="wallet-copy-btn" type="button">
+          Copiar código PIX
+        </button>
+      </div>
+
+      <div id="walletMsg" class="wallet-msg"></div>
+    </div>
+  </div>
+
+
+
+  <script type="module" src="./js/app.js"></script>
+
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./service-worker.js")
+          .then(() => console.log("[PWA] Service Worker registrado"))
+          .catch((err) => console.error("[PWA] Erro ao registrar:", err));
+      });
+    }
+  </script>
+
+</body>
+</html>

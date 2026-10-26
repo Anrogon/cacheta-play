@@ -1,0 +1,219 @@
+/* =========================================================
+   MOBILE TABLES
+   Sala de mesas mobile em 1 coluna estilo app
+========================================================= */
+
+@media (max-width: 520px) and (orientation: portrait) {
+
+  #tablesScreen {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100vh !important;
+
+    padding: 12px !important;
+    margin: 0 !important;
+
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+
+    box-sizing: border-box !important;
+  }
+
+  .tables-header {
+    width: 100% !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+
+    margin-bottom: 10px !important;
+  }
+
+  #tablesGrid {
+    width: 100% !important;
+    max-width: 100% !important;
+
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    height: auto !important;
+    align-content: start !important;
+
+    box-sizing: border-box !important;
+  }
+
+  #tablesGrid > .table-card {
+    width: 100% !important;
+    min-width: 0 !important;
+
+    display: grid !important;
+    grid-template-columns: 115px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "title   visual"
+      "value   visual"
+      "actions visual" !important;
+
+    align-items: center !important;
+
+    column-gap: 10px !important;
+    row-gap: 8px !important;
+
+    margin: 0 !important;
+    padding: 12px !important;
+
+    border-radius: 14px !important;
+
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+  }
+
+  #tablesGrid > .table-card .table-title {
+    grid-area: title !important;
+
+    margin: 0 !important;
+
+    font-size: 13px !important;
+    font-weight: 900 !important;
+    line-height: 1.1 !important;
+
+    text-align: center !important;
+    white-space: nowrap !important;
+  }
+
+  #tablesGrid > .table-card .table-value,
+  #tablesGrid > .table-card .table-buyin {
+    grid-area: value !important;
+
+    margin: 0 !important;
+    justify-self: center !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+
+    text-align: center !important;
+    opacity: 0.96 !important;
+  }
+
+  #tablesGrid > .table-card .table-hint {
+    display: none !important;
+  }
+
+  #tablesGrid > .table-card .table-actions {
+    grid-area: actions !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+
+    width: auto !important;
+    margin: 0 !important;
+  }
+
+  #tablesGrid > .table-card .table-actions button,
+  #tablesGrid > .table-card .table-actions .btn-primary,
+  #tablesGrid > .table-card .table-actions .watch-btn {
+    min-height: 28px !important;
+
+    padding: 5px 8px !important;
+    border-radius: 8px !important;
+
+    font-size: 12px !important;
+    font-weight: 900 !important;
+
+    justify-content: center !important;
+  }
+
+  #tablesGrid > .table-card .table-visual {
+    grid-area: visual !important;
+
+    position: relative !important;
+
+    width: 180px !important;
+    min-width: 180px !important;
+    height: auto !important;
+
+    justify-self: center !important;
+    align-self: center !important;
+
+    margin: 0 !important;
+
+    overflow: visible !important;
+  }
+
+  #tablesGrid > .table-card .table-visual img {
+    width: 100% !important;
+    height: 100% !important;
+
+    object-fit: contain !important;
+
+    display: block !important;
+    pointer-events: none !important;
+  }
+
+  #tablesGrid > .table-card .seats,
+  #tablesGrid > .table-card .seats-overlay {
+    position: absolute !important;
+    inset: 0 !important;
+
+    overflow: visible !important;
+    pointer-events: auto !important;
+  }
+
+  #tablesGrid > .table-card .seat {
+    width: 25px !important;
+    height: 25px !important;
+
+    font-size: 10px !important;
+    font-weight: 800 !important;
+
+    border-width: 1px !important;
+  }
+
+/* ✅ posições da sala de mesas móbile — Cachetão Pro 10 lugares */
+
+.seat.pos1  { left: 50%; top: 96%; transform: translate(-50%, -50%); }
+.seat.pos2  { left: 25%; top: 96%; transform: translate(-50%, -50%); }
+
+.seat.pos3  { left: 1%;  top: 70%; transform: translate(-50%, -50%); }
+.seat.pos4  { left: 1%;  top: 25%; transform: translate(-50%, -50%); }
+
+.seat.pos5  { left: 25%; top: 0%;  transform: translate(-50%, -50%); }
+.seat.pos6  { left: 50%; top: 0%; transform: translate(-50%, -50%); }
+.seat.pos7  { left: 72%; top: 0%; transform: translate(-50%, -50%); }
+
+.seat.pos8  { left: 98%; top: 25%; transform: translate(-50%, -50%); }
+.seat.pos9  { left: 98%; top: 70%; transform: translate(-50%, -50%); }
+
+.seat.pos10 { left: 72%; top: 96%; transform: translate(-50%, -50%); }
+
+  #tablesGrid > .table-card .watch-text {
+    display: none !important;
+  }
+
+  #tablesGrid > .table-card .watch-btn {
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+
+    padding: 4px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    background: transparent !important;
+    border: none !important;
+  }
+
+  #tablesGrid > .table-card .watch-icon {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  
+}
+

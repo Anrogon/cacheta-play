@@ -1,0 +1,967 @@
+/* =========================================================
+   MOBILE PORTRAIT
+   Uso: somente jogo em andamento no celular
+========================================================= */
+
+@media (max-width: 520px) and (orientation: portrait) {
+
+  html,
+  body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body.mobile-table-mode #scoreboard {
+    display: none !important;
+  }
+
+  #game {
+    width: 100vw !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    /*background-image: url("/assets/image/bg-g.jpg");*/
+    background-size: cover !important;
+    background-position: center !important;
+
+    position: relative;
+  }
+
+  #tableArea {
+    height: 100vh !important;
+    padding-top: 120px !important;
+    padding-bottom: 260px !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+
+    overflow-y: auto !important;
+    pointer-events: auto !important;
+  }
+
+  #bottomArea {
+    pointer-events: auto !important;
+    background: transparent !important;
+  }
+}
+
+/* =========================================================
+   MOBILE PORTRAIT - JOGOS BAIXADOS
+========================================================= */
+
+@media (max-width: 520px) and (orientation: portrait) {
+
+  #table {
+  position: fixed !important;
+
+  left: 22px !important;
+  right: 22px !important;
+
+  top: 355px !important;
+  height: 120px !important;
+  min-height: 0 !important;
+
+
+  bottom: auto !important;
+  width: auto !important;
+  transform: none !important;
+
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 14px !important;
+
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+
+  padding: 4px 8px !important;
+  margin: 0 !important;
+
+  /*background: rgba(0, 0, 0, 0.18) !important;*/
+  border-radius: 22px !important;
+
+  z-index: 16000 !important;
+  pointer-events: auto !important;
+}
+
+  .table-melds-layer {
+    width: 100% !important;
+    height: 100% !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+
+    align-items: center !important;
+    justify-content: center !important;
+
+    gap: 14px !important;
+
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  .grupo-table {
+    position: relative !important;
+
+    width: auto !important;
+    min-width: auto !important;
+    height: 70px !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    overflow: visible !important;
+    background: transparent !important;
+
+    pointer-events: auto !important;
+  }
+
+  .grupo-table .card {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+
+    width: 48px !important;
+    height: 68px !important;
+
+    margin-left: -40px !important;
+    border-radius: 5px !important;
+
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4) !important;
+    transition: transform 0.10s !important;
+  }
+
+.grupo-table .card:first-child {
+  margin-left: 0 !important;
+}
+
+}
+
+/* =========================================================
+   MOBILE PORTRAIT - MÃO + MONTE/LIXO/VIRA
+========================================================= */
+
+@media (max-width: 520px) and (orientation: portrait) {
+
+  #hand {
+    position: fixed !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: calc(15px + env(safe-area-inset-bottom)) !important;
+
+    width: auto !important;
+    max-width: none !important;
+
+    display: flex !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+    gap: 0 !important;
+
+    padding: 10px 6px !important;
+    margin-left: 0 !important;
+
+    border-radius: 3px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
+
+    transform: none !important;
+
+    z-index: 30000 !important;
+    pointer-events: auto !important;
+  }
+
+  #hand .card {
+    width: 60px !important;
+    height: 93.6px !important;
+
+    position: relative !important;
+
+    flex: 0 0 auto !important;
+    margin-left: -42px !important;
+
+    border-radius: 5px !important;
+
+    pointer-events: auto !important;
+  }
+
+  #hand .card.selected {
+    transform: translateY(-18px) !important;
+  }
+
+  #hand .card:first-child {
+    margin-left: 0 !important;
+  }
+
+
+  #hand .card.touch-dragging {
+    transform: translateY(-10px) scale(1.04) !important;
+    z-index: 40000 !important;
+    filter: brightness(1.08);
+  }
+
+  #hand .card.touch-drop-target {
+    outline: 2px solid rgba(255,255,255,0.9) !important;
+    outline-offset: 2px !important;
+  }
+
+  #hand::before,
+  #hand::after {
+    pointer-events: none !important;
+  }
+
+  #deck-area {
+    position: fixed !important;
+
+    left: 50% !important;
+    bottom: calc(10px + env(safe-area-inset-bottom) + 150px) !important;
+    transform: translateX(-50%) !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 3px !important;
+
+    width: 100vw !important;
+    margin: 0 !important;
+
+    z-index: 25000 !important;
+    pointer-events: none !important;
+  }
+
+  #deck-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+
+    pointer-events: auto !important;
+  }
+
+  #monte.monte-horizontal {
+    width: 74px !important;
+    height: 48px !important;
+
+    border: none !important;
+    background-image: url("/assets/image/monte-v.png") !important;
+    background-size: contain !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+
+    pointer-events: auto !important;
+  }
+
+  #lixo {
+    width: 54px !important;
+    height: 76px !important;
+    border-radius: 5px !important;
+
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+
+    pointer-events: auto !important;
+  }
+
+  #vira-area {
+    width: 65px !important;
+    height: 95px !important;
+    min-height: 76px !important;
+
+    border-radius: 5px !important;
+
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    pointer-events: none !important;
+  }
+
+  #vira-card {
+    width: 60px !important;
+    height: 93.6px !important;
+
+    border-radius: 5px !important;
+
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+  }
+
+  #vira-joker {
+    width: 100vw !important;
+
+    font-size: 10px !important;
+    line-height: 1 !important;
+
+    color: #fff !important;
+    font-weight: 800 !important;
+    text-align: center !important;
+
+    white-space: nowrap !important;
+    text-shadow: 0 2px 4px rgba(0,0,0,.75) !important;
+
+    pointer-events: none !important;
+  }
+
+/* =========================
+   VIRA MOBILE
+========================= */
+
+#mobileViraBox {
+  position: fixed !important;
+
+  /* região superior: fica só o texto/cartinhas dos coringas */
+  top: calc(10px + env(safe-area-inset-top) + 150px) !important;
+
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 3px !important;
+
+  pointer-events: none !important;
+  z-index: 26000 !important;
+}
+
+#mobileViraCard {
+  width: 60px !important;
+  height: 93.6px !important;
+
+  flex: 0 0 auto !important;
+
+  border-radius: 4px !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
+
+  position: relative !important;
+  z-index: 36001 !important;
+
+  pointer-events: auto !important;
+  cursor: pointer !important;
+
+  touch-action: manipulation !important;
+  -webkit-tap-highlight-color: transparent !important;
+
+  /*outline: 2px solid rgba(255, 215, 0, 0.70) !important;*/
+  outline-offset: 4px !important;
+
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.45),
+    0 0 8px rgba(255,215,0,.25) !important;
+}
+
+#mobileViraCard.vira-selectable {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+#mobileViraCard.selected {
+  transform: translateY(-8px) !important;
+  outline: 3px solid #ffd54a !important;
+  box-shadow:
+    0 2px 6px rgba(0,0,0,.45),
+    0 0 14px rgba(255,213,74,.9) !important;
+}
+
+ #mobileViraJoker {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  gap: 4px !important;
+
+  font-size: 10px !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+
+  text-align: center !important;
+  white-space: nowrap !important;
+
+  text-shadow: 0 2px 4px rgba(0,0,0,.8) !important;
+
+  pointer-events: none !important;
+}
+
+.mobile-joker-mini-label {
+  font-weight: 800;
+  line-height: 1;
+}
+
+.mobile-joker-mini-cards {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+}
+
+.mobile-joker-mini-card {
+  width: 40px;
+  height: auto;
+
+  border-radius: 3px;
+  display: block;
+}
+
+
+  #mobileDeckBox {
+    position: fixed !important;
+
+    left: 38% !important;
+    width: 230px !important;
+    transform: translateX(-50%) !important;
+
+    bottom: calc(-7px + env(safe-area-inset-bottom) + 140px) !important;
+
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    gap: 17px !important;
+
+    z-index: 36000 !important;
+    pointer-events: auto !important;
+  }
+
+  #mobileDeckBox #monte.monte-horizontal {
+    width: 78px !important;
+    height: 57px !important;
+  }
+
+  #mobileDeckBox #lixo {
+    width: 70px !important;
+    height: 97px !important;
+  }
+
+  #mobileDeckBox #pot-area {
+    transform: scale(0.75);
+    transform-origin: center;
+  }
+
+#mobileActionButtons {
+  position: fixed !important;
+  right: 18px !important;
+  bottom: calc(10px + env(safe-area-inset-bottom) + 118px) !important;
+
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+
+  z-index: 38000 !important;
+  pointer-events: auto !important;
+}
+
+#mobileActionButtons button {
+  width: 74px !important;
+  height: 30px !important;
+
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  border-radius: 999px !important;
+
+  color: #fff !important;
+  font-size: 10px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  padding: 0 5px !important;
+  font-weight: 900 !important;
+
+  transition:
+  transform 0.08s ease,
+  filter 0.08s ease,
+  box-shadow 0.08s ease;
+
+  transition: background .18s ease, border-color .18s ease !important;
+
+  /* Cor padrão (CORRER) */
+  background: linear-gradient(180deg, #666, #3b3b3b) !important;
+}
+
+#mobileActionButtons #mobileBatiBtn {
+  font-size: 10px !important;
+}
+
+#mobileActionButtons #mobileJogarViraBtn {
+  display: none;
+
+  background: linear-gradient(180deg, #666, #3b3b3b) !important;
+
+  font-size: 10px !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  padding: 0 4px !important;
+}
+
+#mobileActionButtons button:active {
+  transform: translateY(2px);
+  filter: brightness(0.88);
+}
+
+#mobileActionButtons #mobileBatiBtn {
+  background: linear-gradient(180deg, #2d7df7, #0d47a1) !important;
+}
+
+#mobileActionButtons #mobileJogarBtn {
+  background: linear-gradient(180deg, #34c759, #198f38) !important;
+}
+
+#mobileActionButtons #mobileJogarBtn.is-marra {
+  background: linear-gradient(180deg, #e53935, #a80000) !important;
+}
+
+#mobileActionButtons #mobileCorrerBtn {
+  background: linear-gradient(180deg, #666, #3b3b3b) !important;
+}
+
+#mobileActionButtons #mobileBatiBtn.is-active {
+  background: linear-gradient(180deg, #ffd54a, #c49000) !important;
+  color: #1c1400 !important;
+}
+
+#mobileActionButtons #mobileBatiBtn.is-burned {
+  background: linear-gradient(180deg, #e53935, #a80000) !important;
+  color: #fff !important;
+}
+
+#mobileActionButtons #mobileBatiBtn.is-disabled-ui {
+  opacity: .55 !important;
+}
+}
+
+/* =========================================================
+   MOBILE PORTRAIT - HUD INFERIOR
+   Jogador + ordenar + BATI
+========================================================= */
+
+@media (max-width: 520px) and (orientation: portrait) {
+
+  body.mobile-table-mode #mobileSortButtonsHud {
+    position: fixed !important;
+
+    left: 24px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom) + 140px) !important;
+
+    display: flex !important;
+    gap: 10px !important;
+
+    z-index: 37000 !important;
+  }
+
+  body.mobile-table-mode #mobileSortButtonsHud .sort-btn {
+    position: static !important;
+
+    width: 30px !important;
+    height: 30px !important;
+    padding: 0 !important;
+
+    z-index: 37000 !important;
+  }
+
+
+  body.mobile-table-mode #mobileBatiBtnHud,
+  body.mobile-table-mode .sb-mobile-bati-btn {
+    position: fixed !important;
+
+    left: auto !important;
+    right: 25px !important;
+    top: auto !important;
+    bottom: calc(10px + env(safe-area-inset-bottom) + 145px) !important;
+    transform: none !important;
+
+    min-width: 70px !important;
+    width: 50px !important;
+    height: 28px !important;
+    padding: 0 10px !important;
+
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+
+    border: 1px solid rgba(255,255,255,0.22) !important;
+    border-radius: 999px !important;
+
+    font-size: 11px !important;
+    font-weight: 900 !important;
+    line-height: 1 !important;
+
+    color: #fff !important;
+    background: linear-gradient(180deg, #1a73e8, #0d47a1) !important;
+
+    white-space: nowrap !important;
+    cursor: pointer !important;
+    pointer-events: auto !important;
+
+    z-index: 39000 !important;
+  }
+
+  body.mobile-table-mode #mobileBatiBtnHud.is-active,
+  body.mobile-table-mode .sb-mobile-bati-btn.is-active {
+    background: linear-gradient(180deg, #2ecc71, #27ae60) !important;
+  }
+
+  body.mobile-table-mode #mobileBatiBtnHud.is-disabled-ui,
+  body.mobile-table-mode .sb-mobile-bati-btn.is-disabled-ui {
+    background: linear-gradient(180deg, #e53935, #b71c1c) !important;
+  }
+/*
+  body.mobile-table-mode #mobileBottomHud {
+  overflow: visible !important;
+  }
+
+  body.mobile-table-mode #mobileBottomHud .mobile-bottom-info {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+*/
+  body.mobile-table-mode .mobile-seat-timebar {
+  position: absolute !important;
+
+  left: 36px !important;
+  right: 10px !important;
+  bottom: 2px !important;
+
+  height: 3px !important;
+  border-radius: 999px !important;
+
+  background: rgba(255,255,255,0.22) !important;
+  overflow: hidden !important;
+
+  z-index: 5 !important;
+}
+
+  body.mobile-table-mode .mobile-seat-timebar-fill,
+  body.mobile-table-mode .mobile-hud-timebar-fill {
+    height: 100% !important;
+    border-radius: 999px !important;
+
+    /*background: linear-gradient(180deg, #e53935, #b71c1c) !important;*/
+    background: linear-gradient(90deg,#ffd700, #ffb300 );
+    transition: width 0.2s linear !important;
+  }
+
+  body.mobile-table-mode .mobile-hud-timebar {
+    width: 58px !important;
+    height: 5px !important;
+
+    margin-top: 4px !important;
+
+    border-radius: 999px !important;
+    background: rgba(255,255,255,0.22) !important;
+    overflow: hidden !important;
+  }
+
+  body.mobile-table-mode .mobile-seat-offline {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+
+  margin-left: 5px !important;
+  padding: 1px 4px !important;
+
+  border-radius: 999px !important;
+
+  background: rgba(220,40,40,0.95) !important;
+  color: #fff !important;
+
+  font-size: 8px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+
+  vertical-align: middle !important;
+}
+}
+
+/* =========================================================
+   MOBILE — ORDENAÇÃO AO LADO DA MÃO
+========================================================= */
+
+@media (max-width:700px){
+
+  body.mobile-table-mode #sortPanel{
+    position:fixed !important;
+
+    left:7px !important;
+    bottom:calc(25px + env(safe-area-inset-bottom)) !important;
+
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    gap:3px !important;
+
+    width:auto !important;
+    height:auto !important;
+
+    margin:0 !important;
+    padding:0 !important;
+
+    transform:none !important;
+
+    z-index:1200 !important;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-title{
+    position:static !important;
+
+    margin:0 !important;
+    padding:0 !important;
+
+    color:#ffd86b;
+
+    font-size:9px;
+    font-weight:900;
+    line-height:1;
+
+    pointer-events:none;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-buttons{
+    position:static !important;
+
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:center !important;
+    gap:9px !important;
+
+    margin:0 !important;
+    padding:0 !important;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-btn{
+    position:static !important;
+
+    left:auto !important;
+    right:auto !important;
+    top:auto !important;
+    bottom:auto !important;
+
+    width:31px !important;
+    height:39px !important;
+
+    margin:0 !important;
+    padding:0 !important;
+
+    transform:none;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-btn:hover{
+    transform:none;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-btn:active{
+    transform:scale(.94);
+  }
+
+  body.mobile-table-mode #sortPanel .sort-card{
+    width:29px !important;
+    height:37px !important;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-values-grid{
+    width:21px;
+
+    gap:1px 4px;
+
+    font-size:11px;
+  }
+
+  body.mobile-table-mode #sortPanel .sort-suit-column{
+    gap:1px;
+
+    font-size:11px;
+  }
+
+  /* Garante o clique nos botões de ordenação */
+
+body.mobile-table-mode #sortPanel{
+  pointer-events:auto !important;
+  z-index:99999 !important;
+}
+
+body.mobile-table-mode #sortPanel .sort-title{
+  pointer-events:none !important;
+}
+
+body.mobile-table-mode #sortPanel .sort-buttons,
+body.mobile-table-mode #sortPanel .sort-btn,
+body.mobile-table-mode #sortPanel .sort-card,
+body.mobile-table-mode #sortPanel .sort-card *{
+  pointer-events:auto !important;
+}
+
+body.mobile-table-mode #sortPanel .sort-btn{
+  touch-action:manipulation !important;
+  cursor:pointer !important;
+}
+}
+
+/* =========================================================
+   MOBILE — MELHOR LEGIBILIDADE DA MÃO
+========================================================= */
+
+@media (max-width:700px){
+
+  body.mobile-table-mode #hand{
+    display:flex !important;
+    align-items:flex-end !important;
+    justify-content:center !important;
+
+    overflow:visible !important;
+
+    padding:0 4px !important;
+  }
+
+  body.mobile-table-mode #hand .card{
+    flex:0 0 60px !important;
+
+    width:60px !important;
+    height:88px !important;
+
+    background-size:100% 100% !important;
+    background-position:center !important;
+    background-repeat:no-repeat !important;
+
+    border:1px solid rgba(255,255,255,.92) !important;
+    border-radius:5px !important;
+
+    box-shadow:
+      -2px 0 4px rgba(0,0,0,.32),
+      0 2px 5px rgba(0,0,0,.28) !important;
+
+    image-rendering:auto;
+
+    transition:
+      transform .12s ease,
+      filter .12s ease !important;
+  }
+
+  /*
+   * Sobreposição moderada:
+   * cada carta deixa aproximadamente 28px visíveis.
+   */
+  body.mobile-table-mode #hand .card + .card{
+    margin-left:-42px !important;
+  }
+
+  body.mobile-table-mode #hand .card:first-child{
+    margin-left:0 !important;
+  }
+
+  body.mobile-table-mode #hand .card.selected{
+    position:relative !important;
+    z-index:100 !important;
+
+    transform:translateY(-10px) !important;
+
+    border-color:#ffd86b !important;
+
+    box-shadow:
+      0 0 0 2px rgba(255,216,107,.75),
+      0 5px 10px rgba(0,0,0,.45) !important;
+  }
+
+  body.mobile-table-mode #hand .card.touch-dragging{
+    position:relative !important;
+    z-index:200 !important;
+
+    transform:translateY(-14px) scale(1.04) !important;
+  }
+}
+
+#mobileJogarViraBtn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  width: 74px;
+  min-height: 32px;
+
+  padding: 4px 5px;
+  border: 0;
+  border-radius: 18px;
+
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  white-space: normal;
+}
+
+#mobileJogarViraBtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* =========================================================
+   COMPETIÇÃO — MINI CARTAS DOS CORINGAS
+========================================================= */
+
+#mobileViraJoker{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.mobile-joker-mini-label{
+  font-weight: 700;
+  margin-right: 2px;
+}
+
+.mobile-joker-mini-card{
+  width: 34px;
+  height: auto;
+  border-radius: 3px;
+  display: block;
+}
+
+.mobile-recreational-pot {
+  position: fixed !important;
+
+  top: calc(10px + env(safe-area-inset-top) + 45px) !important;
+  left: 50% !important;
+
+  transform: translateX(-50%) scale(0.85) !important;
+  transform-origin: top center !important;
+
+  z-index: 26010 !important;
+  pointer-events: none !important;
+}
+
+
+.mobile-competition-prize {
+  position: fixed !important;
+
+  top: calc(10px + env(safe-area-inset-top) + 85px) !important;
+  left: 50% !important;
+
+  transform: translateX(-50%) scale(0.85) !important;
+  transform-origin: top center !important;
+
+  z-index: 26010 !important;
+  pointer-events: none !important;
+}

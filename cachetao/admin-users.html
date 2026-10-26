@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Cachetão Pro - Admin Usuários</title>
+
+  <link rel="stylesheet" href="./css/reset.css">
+  <link rel="stylesheet" href="./css/admin.css">
+</head>
+
+<body class="admin-theme">
+  <main class="admin-wrap">
+
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <h1>👥 Admin • Usuários</h1>
+
+        <p>
+          Cachetão Pro • gerenciamento administrativo de contas cadastradas
+        </p>
+      </div>
+
+      <div class="admin-badge">
+        Área administrativa
+      </div>
+    </header>
+
+    <div id="adminMsg" class="admin-msg">
+      Carregando usuários...
+    </div>
+
+    <section class="admin-hero">
+      <h2>Usuários cadastrados</h2>
+
+      <p>
+        Esta tela lista os usuários do sistema para consulta e gerenciamento
+        administrativo.
+      </p>
+    </section>
+
+    <nav
+      class="admin-users-toolbar"
+      aria-label="Filtros e ações dos usuários"
+    >
+      <div class="admin-users-toolbar-left">
+
+        <div class="admin-counter">
+          Total de usuários:
+          <strong id="usersCount">0</strong>
+        </div>
+
+        <input
+          type="text"
+          id="userSearchInput"
+          class="admin-field admin-search"
+          placeholder="Buscar por usuário ou e-mail"
+          autocomplete="off"
+        >
+
+        <select
+          id="userFilterSelect"
+          class="admin-field admin-select"
+          aria-label="Filtrar usuários"
+        >
+          <option value="all">Todos</option>
+          <option value="admin">Somente admins</option>
+          <option value="blocked">Somente bloqueados</option>
+          <option value="active">Somente ativos</option>
+        </select>
+
+      </div>
+
+      <div class="admin-users-toolbar-right">
+
+        <button
+          id="btnClearFilters"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          Limpar filtros
+        </button>
+
+        <button
+          id="btnReloadUsers"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          🔄 Atualizar lista
+        </button>
+
+        <button
+          id="btnGoDashboard"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          📊 Dashboard
+        </button>
+
+        <button
+          id="btnBackHomeTop"
+          class="admin-btn admin-btn-primary"
+          type="button"
+        >
+          ← Voltar
+        </button>
+
+      </div>
+    </nav>
+
+    <section class="admin-users-table-card">
+      <div class="admin-users-table-wrap">
+
+        <table class="admin-users-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Usuário</th>
+              <th>E-mail</th>
+              <th>Status</th>
+              <th>Fichas</th>
+              <th>Saldo R$</th>
+              <th>Perfil</th>
+              <th>Criado em</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+
+          <tbody id="adminUsersBody">
+            <tr>
+              <td colspan="8" class="admin-empty-cell">
+                Carregando...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+      </div>
+    </section>
+
+    <div class="admin-pagination">
+
+      <div class="admin-pagination-controls">
+
+        <span class="admin-pagination-label">
+          Página
+          <strong id="currentPageLabel">1</strong>
+          de
+          <strong id="totalPagesLabel">1</strong>
+        </span>
+
+        <button
+          id="btnPrevPage"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          Anterior
+        </button>
+
+        <button
+          id="btnNextPage"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          Próxima
+        </button>
+
+        <select
+          id="pageSizeSelect"
+          class="admin-field admin-select admin-page-size"
+          aria-label="Quantidade de usuários por página"
+        >
+          <option value="10">10 por página</option>
+          <option value="20" selected>20 por página</option>
+          <option value="50">50 por página</option>
+          <option value="100">100 por página</option>
+        </select>
+
+      </div>
+
+      <div class="admin-footer-actions">
+
+        <button
+          id="btnBackHome"
+          class="admin-btn admin-btn-primary"
+          type="button"
+        >
+          ← Voltar para a Administração
+        </button>
+
+        <button
+          id="btnLogout"
+          class="admin-btn admin-btn-danger"
+          type="button"
+        >
+          Sair
+        </button>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <script src="./js/admin-users.js"></script>
+</body>
+</html>

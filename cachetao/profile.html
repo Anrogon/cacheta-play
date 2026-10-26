@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cachetão Pro - Perfil</title>
+  <style>
+body{
+  margin:0;
+  min-height:100vh;
+  background:
+    linear-gradient(rgba(0,70,35,.72), rgba(0,35,18,.88)),
+    url("./assets/image/bg-g.png") center/cover fixed no-repeat;
+  font-family:Arial, Helvetica, sans-serif;
+  color:#fff;
+}
+
+.page-card{
+  width:min(620px,94vw);
+  margin:34px auto;
+  padding:30px 26px;
+  border-radius:22px;
+  background:linear-gradient(180deg,#06391f,#032514);
+  border:1px solid rgba(212,175,55,.38);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 16px 38px rgba(0,0,0,.36);
+  text-align:center;
+}
+
+h1{
+  margin:0 0 20px;
+  color:#ffd86b;
+  font-size:34px;
+  font-weight:900;
+  text-shadow:0 3px 8px rgba(0,0,0,.5);
+}
+
+#profileUsername{
+  margin-bottom:20px;
+  font-size:24px;
+  font-weight:900;
+}
+
+.carousel-wrap,
+.password-wrap{
+  margin-top:18px;
+  padding:20px 18px;
+  border-radius:22px;
+  background:rgba(0,0,0,.20);
+  border:1px solid rgba(212,175,55,.25);
+}
+
+.carousel-title,
+.password-title{
+  margin-bottom:16px;
+  color:#ffd86b;
+  font-size:17px;
+  font-weight:900;
+}
+
+.avatar-carousel{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+}
+
+.carousel-preview{
+  width:132px;
+  height:132px;
+  border-radius:50%;
+  object-fit:cover;
+  background:#fff;
+  border:4px solid rgba(212,175,55,.75);
+  box-shadow:0 0 0 5px rgba(255,255,255,.08),0 0 24px rgba(212,175,55,.28),0 10px 26px rgba(0,0,0,.35);
+}
+
+.carousel-label{
+  margin-top:10px;
+  font-size:14px;
+  font-weight:800;
+}
+
+.carousel-btn{
+  width:46px;
+  height:46px;
+  border-radius:14px;
+  border:1px solid rgba(212,175,55,.32);
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  font-size:26px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.carousel-btn:hover{
+  background:rgba(212,175,55,.16);
+}
+
+.carousel-btn:active{
+  transform:scale(.94);
+}
+
+.profile-line{
+  margin-top:10px;
+  padding:12px 14px;
+  border-radius:14px;
+  background:rgba(255,255,255,.08);
+  border:1px solid rgba(212,175,55,.18);
+  text-align:left;
+  font-size:15px;
+  font-weight:800;
+}
+
+.password-fields,
+.withdraw-fields{
+  display:grid;
+  gap:10px;
+  margin-top:10px;
+  margin-bottom:14px;
+}
+
+.password-fields input,
+.withdraw-fields input,
+.withdraw-fields select{
+  width:100%;
+  box-sizing:border-box;
+  padding:12px 14px;
+  border-radius:14px;
+  border:1px solid rgba(212,175,55,.22);
+  background:rgba(255,255,255,.08);
+  color:#fff;
+  font-size:15px;
+}
+
+.withdraw-fields select option{
+  color:#111;
+}
+
+.actions{
+  display:flex;
+  justify-content:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+button{
+  padding:12px 22px;
+  border-radius:14px;
+  font-size:15px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+.primary{
+  background:linear-gradient(180deg,#a51f36,#731726);
+  color:#fff;
+  border:1px solid rgba(212,175,55,.30);
+  box-shadow:0 8px 18px rgba(0,0,0,.24);
+}
+
+.primary:hover{
+  background:linear-gradient(180deg,#bd2941,#8b1d2f);
+  transform:translateY(-1px);
+}
+
+.secondary{
+  background:rgba(255,255,255,.10);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.18);
+}
+
+.danger{
+  background:#b42318;
+  color:#fff;
+  border:1px solid rgba(212,175,55,.30);
+}
+
+.danger:hover{
+  background:#d02b1f;
+  transform:translateY(-1px);
+}
+
+.msg{
+  min-height:22px;
+  margin-top:14px;
+  color:#ffd86b;
+  font-weight:800;
+}
+
+.wallet-history-list{
+  text-align:left;
+  font-size:14px;
+  line-height:1.5;
+}
+
+@media(max-width:640px){
+  .page-card{
+    margin:24px auto;
+    padding:24px 18px;
+  }
+
+  h1{
+    font-size:30px;
+  }
+
+  .carousel-preview{
+    width:118px;
+    height:118px;
+  }
+}
+</style>
+</head>
+<body>
+  <div class="page-card">
+    <h1>♠  Perfil  ♠</h1>
+
+    <div class="profile-top">
+      <div id="profileUsername">Carregando...</div>
+    </div>
+
+    <div class="carousel-wrap">
+      <div class="carousel-title">Escolha seu avatar</div>
+
+      <div class="avatar-carousel">
+        <button id="btnPrevAvatar" class="carousel-btn" type="button">‹</button>
+
+        <div class="carousel-center">
+          <img id="carouselAvatarPreview" class="carousel-preview" src="/assets/avatars/avatar-01.png" alt="Avatar selecionado">
+          <div id="carouselAvatarLabel" class="carousel-label">Avatar 01</div>
+        </div>
+
+        <button id="btnNextAvatar" class="carousel-btn" type="button">›</button>
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button id="btnSaveAvatar" class="primary" type="button">Salvar avatar</button>
+      </div>
+    </div>
+
+    <div class="profile-line"><strong>E-mail:</strong> <span id="profileEmail">—</span></div>
+    <div class="profile-line"><strong>Fichas:</strong> <span id="profileBalance">—</span></div>
+    <div class="profile-line"><strong>Saldo:</strong> <span id="profileCashBalance">R$ —</span></div>
+    <div class="profile-line"><strong>Criado em:</strong> <span id="profileCreatedAt">—</span></div>
+
+    <div class="password-wrap" style="margin-top:18px;">
+      <div class="password-title">Estatísticas Básicas</div>
+
+      <div class="profile-line"><strong>Tipo de conta:</strong> <span id="profileAccountType">—</span></div>
+      <div class="profile-line"><strong>Status da conta:</strong> <span id="profileAccountStatus">—</span></div>
+      <div class="profile-line"><strong>Saldo atual:</strong> <span id="profileStatsBalance">—</span></div>
+      <div class="profile-line"><strong>Membro desde:</strong> <span id="profileStatsMemberSince">—</span></div>
+    </div>
+
+<div class="password-wrap" style="margin-top:18px;">
+  <div class="password-title">Estatísticas do jogador</div>
+
+  <div class="profile-line"><strong>Partidas jogadas:</strong> <span id="profileGamesPlayed">—</span></div>
+  <div class="profile-line"><strong>Vitórias:</strong> <span id="profileWins">—</span></div>
+  <div class="profile-line"><strong>Derrotas:</strong> <span id="profileLosses">—</span></div>
+  <div class="profile-line"><strong>Aproveitamento:</strong> <span id="profileWinRate">—</span></div>
+  <div class="profile-line"><strong>Lucro / Prejuízo:</strong> <span id="profileProfitLoss">—</span></div>
+</div>
+
+<div class="password-wrap" style="margin-top:18px;">
+  <div class="password-title">Histórico financeiro</div>
+  <div id="profileWalletHistory" class="wallet-history-list">
+    Carregando histórico...
+  </div>
+</div>
+
+    <div class="password-wrap" style="margin-top:18px;">
+      <div class="password-title">Solicitar saque</div>
+
+      <div class="profile-line">
+        <strong>Saldo disponível:</strong>
+        <span id="withdrawCashBalance">R$ 0,00</span>
+      </div>
+
+      <div class="withdraw-fields">
+        <input
+          id="withdrawAmount"
+          type="number"
+          min="0.01"
+          step="0.01"
+          placeholder="Valor do saque"
+        >
+
+        <select id="withdrawPixKeyType">
+          <option value="">Tipo de chave PIX</option>
+          <option value="CPF">CPF</option>
+          <option value="EMAIL">E-mail</option>
+          <option value="PHONE">Telefone</option>
+          <option value="RANDOM">Chave aleatória</option>
+        </select>
+
+        <input
+          id="withdrawPixKey"
+          type="text"
+          placeholder="Chave PIX"
+          autocomplete="off"
+        >
+      </div>
+
+            <button
+              id="btnRequestWithdrawal"
+              class="primary"
+              type="button"
+            >
+              Solicitar saque
+            </button>
+
+            <div
+              id="withdrawMessage"
+              class="profile-line"
+              style="display:none;"
+            ></div>
+          </div>
+
+    <div class="password-wrap">
+      <div class="password-title">Trocar senha</div>
+
+      <div class="password-fields">
+        <input type="password" id="currentPassword" placeholder="Senha atual">
+        <input type="password" id="newPassword" placeholder="Nova senha">
+        <input type="password" id="confirmPassword" placeholder="Confirmar nova senha">
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button id="btnChangePassword" class="primary" type="button">Salvar nova senha</button>
+      </div>
+    </div>
+
+        <div class="password-wrap" style="margin-top:18px;">
+      <div class="password-title">Excluir conta</div>
+
+      <div class="profile-line">
+        A exclusão da conta é permanente e não poderá ser desfeita. 
+        Se houver saldo disponível, ele será perdido. Faça o saque antes de excluir sua conta.
+      </div>
+
+      <div class="password-fields">
+        <input
+          type="password"
+          id="deleteAccountPassword"
+          placeholder="Digite sua senha para confirmar"
+        >
+      </div>
+
+      <div class="actions" style="margin-top:14px;">
+        <button id="btnDeleteAccount" class="danger" type="button">
+          Excluir minha conta
+        </button>
+      </div>
+    </div>
+
+    <div id="profileMsg" class="msg"></div>
+
+    <div class="actions">
+      <!--<button id="btnGoSettings" class="primary" type="button">Configurações</button>-->
+      <button id="btnBackHome" class="secondary" type="button">Voltar</button>
+    </div>
+  </div>
+
+  <script src="./js/profile.js"></script>
+</body>
+</html>

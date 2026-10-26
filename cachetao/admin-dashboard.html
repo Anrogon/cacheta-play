@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Cachetão Pro - Admin Dashboard</title>
+
+  <link rel="stylesheet" href="./css/reset.css">
+  <link rel="stylesheet" href="./css/admin.css">
+</head>
+
+<body class="admin-theme">
+  <main class="admin-wrap">
+
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <h1>📊 Admin • Dashboard</h1>
+
+        <p>
+          Cachetão Pro • visão geral do ambiente administrativo
+        </p>
+      </div>
+
+      <div class="admin-badge">
+        Área administrativa
+      </div>
+    </header>
+
+    <div id="adminDashboardMsg" class="admin-msg">
+      Carregando Dashboard...
+    </div>
+
+    <section class="admin-hero">
+      <h2>Resumo administrativo</h2>
+
+      <p>
+        Este painel mostra os principais números do sistema e as últimas
+        ações executadas pela administração.
+      </p>
+    </section>
+
+    <nav class="admin-toolbar" aria-label="Ações do Dashboard">
+      <div class="admin-toolbar-group">
+        <button
+          id="btnReloadDashboard"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          🔄 Atualizar Dashboard
+        </button>
+
+        <button
+          id="btnGoUsers"
+          class="admin-btn admin-btn-primary"
+          type="button"
+        >
+          👥 Administração de usuários
+        </button>
+      </div>
+
+      <div class="admin-toolbar-group">
+        <button
+          id="btnBackHomeTop"
+          class="admin-btn admin-btn-secondary"
+          type="button"
+        >
+          ← Voltar à Administração
+        </button>
+      </div>
+    </nav>
+
+    <section
+      class="admin-stats-grid"
+      aria-label="Estatísticas administrativas"
+    >
+      <article class="admin-stat-card">
+        <div class="admin-stat-title">
+          Total de usuários
+        </div>
+
+        <div id="statTotalUsers" class="admin-stat-value">
+          0
+        </div>
+      </article>
+
+      <article class="admin-stat-card">
+        <div class="admin-stat-title">
+          Administradores
+        </div>
+
+        <div id="statTotalAdmins" class="admin-stat-value">
+          0
+        </div>
+      </article>
+
+      <article class="admin-stat-card">
+        <div class="admin-stat-title">
+          Bloqueados
+        </div>
+
+        <div id="statTotalBlocked" class="admin-stat-value">
+          0
+        </div>
+      </article>
+
+      <article class="admin-stat-card">
+        <div class="admin-stat-title">
+          Ativos
+        </div>
+
+        <div id="statTotalActive" class="admin-stat-value">
+          0
+        </div>
+      </article>
+    </section>
+
+    <section class="admin-panel">
+      <h2>Últimas ações administrativas</h2>
+
+      <div id="recentActionsList" class="admin-actions-list">
+        <div class="admin-empty">
+          Carregando...
+        </div>
+      </div>
+    </section>
+
+    <div class="admin-footer-actions">
+      <button
+        id="btnBackHome"
+        class="admin-btn admin-btn-primary"
+        type="button"
+      >
+        ← Voltar para a Administração
+      </button>
+
+      <button
+        id="btnLogout"
+        class="admin-btn admin-btn-danger"
+        type="button"
+      >
+        Sair
+      </button>
+    </div>
+
+  </main>
+
+  <script src="./js/admin-dashboard.js"></script>
+</body>
+</html>

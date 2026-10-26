@@ -1,0 +1,2663 @@
+/* =============================
+   BASE
+============================= */
+:root{
+  --ui-gap: 12px;
+  --sb-width: 240px;
+  --sb-gutter: 16px;
+  --hand-pad: 10px;
+}
+
+*{ box-sizing: border-box; }
+
+body{
+  font-family: Arial, sans-serif;
+  background: #0b3d2e;
+  background-image: url("/assets/image/bg-g.png"); /* fundo verde da página de mesas */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  color: #fff;
+  text-align: center;
+  margin: 0;
+}
+
+.hidden{ display: none !important; }
+
+
+/* =============================
+   GAME (container)
+============================= */
+#game{
+  min-height: 100vh; 
+  background: #0b3d2e;
+  background-image: url("/assets/image/mesa-cachetao.png");/* fundo roxo/mesa gigante */
+  background-size: 95% 600px;
+  background-position: center top;
+  background-repeat: no-repeat;  
+  display: flex;/* layout */
+  flex-direction: column;
+  gap: var(--ui-gap);
+  padding: 14px 16px;
+}
+
+/* Responsivo: GAME */
+@media (max-width: 900px){
+  #game{
+    padding: 12px 10px;
+    background-size: 110% 560px;
+    background-image: url("/assets/image/bg-verde.png");/* fundo roxo/mesa gigante */
+  }
+}
+
+
+/* =============================
+   TOP BAR
+============================= */
+#top-bar{
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+/* Responsivo: TOP BAR */
+@media (max-width: 900px){
+  #top-bar{ flex-wrap: wrap; justify-content: center; }
+}
+
+
+/* =============================
+   TABLE (área central dentro do roxo)
+============================= */
+#table{
+  width: min(900px, 92vw);
+  margin: 0 auto;
+
+  min-height: 180px;
+
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+
+  gap: 12px;
+  padding: 0;
+}
+
+/* Responsivo: TABLE */
+@media (max-width: 900px){
+  #table{
+    width: min(980px, 96vw);
+    min-height: 260px;
+    max-height: none;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+}
+/* =============================
+   PILES / DECK AREA
+============================= */
+#deck-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  margin: 70px 0 28px;
+}
+
+#deck-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+top: 120px;
+  gap: 40px;
+}
+
+.pile-slot {
+  width: 70px;
+  height: 100px;
+
+  border-radius: 6px;
+  border: 2px solid #84e615;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* MONTE HORIZONTAL */
+#monte.monte-horizontal {
+  width: 130px;
+  height: 80px;
+
+  border: none;
+  background-image: url("/assets/image/monte-v.png") !important;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* LIXO */
+#lixo {
+  width: 70px;
+  height: 100px;
+
+  border-radius: 6px;
+  border: 2px solid #84e615;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* VIRA */
+#vira-area {
+  width: 70px;
+  min-height: 100px;
+
+  border-radius: 6px;
+  border: 2px solid #84e615;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+/* CARTA REAL DA VIRA */
+.vira-card-real {
+  width: 60px;
+  height: 90px;
+
+  border-radius: 5px;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* TEXTO DO CORINGA */
+#vira-joker {
+  font-size: 16px;
+  line-height: 1.1;
+  color: #fff;
+  font-weight: 900;
+  text-align: right;
+  white-space: nowrap;
+  text-shadow: 0 2px 4px rgba(0,0,0,.65);
+  
+}
+
+/* Responsivo: PILES */
+@media (max-width: 900px){
+  #deck-area{ margin: 6px 0; gap: 12px; }
+}
+
+/* =============================
+   BOTTOM AREA (mão + placar)
+============================= */
+#bottomArea{
+  position: relative !important;   /* ✅ âncora do scoreboard */
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: flex-end !important; 
+  /*border: 1px solid #84e615 !important;*/
+  padding: 0 12px 10px !important;
+}
+
+/* Responsivo: BOTTOM AREA */
+@media (max-width: 900px){
+  #bottomArea{
+    grid-template-columns: 1fr;
+    align-items: stretch;
+    gap: 10px;
+  }
+}
+
+
+/* =============================
+   HAND
+============================= */
+#hand{
+  width: 100% !important;
+  max-width: 980px !important;
+  margin: 0 auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+  overflow-x: auto !important;
+  padding: 6px 8px !important;
+  transform: translateY(-16px) !important; /* Sobe a mão - ajuste fino: -12px a -30px */
+}
+
+
+#hand::-webkit-scrollbar{ height: 10px; }
+#hand::-webkit-scrollbar-thumb{
+  background: rgba(255,255,255,0.18);
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+/* Responsivo: HAND */
+@media (max-width: 900px){
+  #hand{
+    justify-content: flex-start;
+    padding: 8px 6px;
+  }
+}
+
+/* =============================
+   SCOREBOARD
+============================= */
+/* scoreboard flutuante */
+#scoreboard{
+  position: absolute !important;
+
+  right: 15px !important;/* menor = mais perto da borda direita */
+  bottom: 30px !important; /* maior = mais pra cima */
+
+  width: 290px !important;
+  height: auto !important;
+  max-height: 145px !important;
+
+  overflow-y: hidden !important;
+  overflow-x: hidden !important;
+  z-index: 50 !important;
+}
+
+/* =============================
+   TURN TIMER BAR
+============================= */
+.sb-turnbar{
+  width: 100% !important;
+  height: 7px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,0.20) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  overflow: hidden !important;
+  margin: 6px 0 10px 0 !important;
+}
+.sb-turnbar-fill{
+  height: 100% !important;
+  background: linear-gradient(90deg,#ffd700, #ffb300 );
+  border-radius: 999px !important;
+  transition: width 160ms linear !important;
+}
+
+/* Responsivo: SCOREBOARD */
+@media (max-width: 900px){
+  #scoreboard{
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin-top: 10px !important;
+  }
+  #hand{
+    transform: none !important;
+  }
+}
+
+/* =============================
+   PLAYER INFO
+============================= */
+#playerInfo{
+  color: #fff;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+
+/* =============================
+   CARTAS (SPRITES PNG)
+============================= */
+.card{
+  width: 72px;
+  height: 100px;
+  background-size: cover;
+  background-position: center;
+  border-radius: 4px;
+  border: rgba(236, 224, 50, 0.4);
+}
+
+.card.hand{
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.card.hand:hover{
+  transform: translateY(-2px);
+}
+
+.card.selected{
+  outline: 3px solid #ffd700;
+  transform: translateY(-2px);
+}
+
+#mao{
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+
+/* =============================
+   GRUPOS NA MESA
+============================= */
+.grupo-table{
+  position: relative;
+  display: flex;
+}
+
+.grupo-table .card{
+  position: relative;
+  margin-left: -50px; /* controla o quanto sobrepõe */
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  border-radius: 6px;
+  transition: transform 0.10s;
+}
+
+.grupo-table .card:first-child{ margin-left: 0; }
+
+.grupo-table .card:hover{
+  transform: translateY(-2px);
+  z-index: 10;
+}
+
+
+/* =============================
+   ANIMAÇÕES (cartas)
+============================= */
+@keyframes cardDeal{
+  0%   { transform: translateY(18px) scale(0.92); opacity: 0; filter: brightness(1.2); }
+  100% { transform: translateY(0) scale(1); opacity: 1; filter: brightness(1); }
+}
+@keyframes cardToTable{
+  0%   { transform: translateY(10px) scale(0.98); opacity: 0.2; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes cardDiscard{
+  0%   { transform: translate(0,0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(10px,10px) rotate(6deg); opacity: 0; }
+}
+.anim-deal   { animation: cardDeal 220ms ease-out; }
+.anim-table  { animation: cardToTable 220ms ease-out; }
+.anim-discard{ animation: cardDiscard 180ms ease-in; }
+
+/* =============================
+   TELA DE MESAS
+============================= */
+#tablesScreen{ padding: 16px; }
+
+/* tela da sala Verde */
+#tablesScreen {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-height: 100vh !important;
+
+  padding: 12px !important;
+  margin: 0 !important;
+
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+
+  /* 🎰 FUNDO PROFISSIONAL */
+  background:
+    linear-gradient(rgba(0, 80, 0, 0.50), rgba(0, 60, 0, 0.55)),
+    url('/assets/image/bg-g.png') no-repeat center center;
+
+  background-size: cover;
+  background-attachment: fixed;
+}
+
+#tablesGrid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
+  gap: 16px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.table-card{
+  border-radius: 14px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* área visual da mesa (imagem + assentos em cima) */
+.table-visual{
+  position: relative;
+  width: 100%;
+  height: 150px;             /* ✅ aumenta pra caber a imagem inteira */
+  display: grid;
+  place-items: center;
+}
+
+.table-visual img{
+  width: 100%;
+  height: 100%;
+  object-fit: contain;        /* ✅ não corta a mesa */
+  display: block;
+  border-radius: 12px;
+  
+}
+
+/* overlay que recebe os assentos criados no app.js */
+.seats-overlay{
+  position: absolute;
+  inset: 0;
+}
+
+/* assentos */
+.seats-overlay .seat{
+  position: absolute;
+  width: 35px;
+  height: 35px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  user-select: none;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+
+.seats-overlay .seat .seat-avatar-img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 999px;
+}
+
+.seats-overlay .seat .seat-avatar-fallback{
+  font-size: 32px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.seats-overlay .seat.empty{
+  background: rgba(255,255,255,0.12);
+}
+
+/* estado selecionado (igual ao que você já faz no JS) */
+.seats-overlay .seat.selected{
+  outline: 3px solid rgba(255,255,255,0.7);
+  outline-offset: 2px;
+}
+
+
+.seat.occupied{
+  border: 2px solid rgba(0,255,120,0.6);
+  box-shadow: 0 0 6px rgba(0,255,120,0.4);
+}
+
+
+
+
+
+
+/*Botão Assistir*/
+.table-actions{
+  display:flex;
+  gap: 8px;
+}
+
+.table-actions .secondary{
+  background: rgba(255,255,255,0.18);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.28);
+}
+/*botão assistir*/
+
+
+/* ✅ posições da sala de mesas desktop — Cachetão Pro 10 lugares */
+.seat.pos1  { left: 50%; top: 95%; transform: translate(-50%, -50%); }
+.seat.pos2  { left: 25%; top: 95%; transform: translate(-50%, -50%); }
+
+.seat.pos3  { left: 2%;  top: 70%; transform: translate(-50%, -50%); }
+.seat.pos4  { left: 2%;  top: 30%; transform: translate(-50%, -50%); }
+
+.seat.pos5  { left: 25%; top: 4%;  transform: translate(-50%, -50%); }
+.seat.pos6  { left: 50%; top: 4%;  transform: translate(-50%, -50%); }
+.seat.pos7  { left: 75%; top: 4%;  transform: translate(-50%, -50%); }
+
+.seat.pos8  { left: 98%; top: 30%; transform: translate(-50%, -50%); }
+.seat.pos9  { left: 98%; top: 70%; transform: translate(-50%, -50%); }
+
+.seat.pos10 { left: 75%; top: 95%; transform: translate(-50%, -50%); }
+
+.table-title{ font-weight: 900; font-size: 16px; text-align: center; }
+.table-value{ font-size: 14px; opacity: 0.95; text-align: center; }
+.table-hint { font-size: 12px; opacity: 0.8; line-height: 1.3; text-align: center; }
+
+.table-actions{
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.table-actions button{
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.16);
+  background: rgba(255,255,255,0.10);
+  color: inherit;
+  cursor: pointer;
+  font-weight: 800;
+}
+.table-actions button.primary{
+  background: rgba(255,255,255,0.18);
+  border-color: rgba(255,255,255,0.22);
+}
+@media (max-width: 900px){
+  #tablesGrid{
+    grid-template-columns: repeat(2, minmax(200px, 1fr));
+  }
+  .table-visual{
+    height: 240px;
+  }
+}
+
+@media (max-width: 520px){
+  #tablesGrid{
+    grid-template-columns: 1fr;
+  }
+  .table-visual{
+    height: 220px;  /* um pouco menor no celular */
+  }
+}
+
+/* =============================
+   SCOREBOARD (interno)
+============================= */
+.sb-title{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 8px;
+}
+
+.sb-timer{
+  font-size: 12px;
+  opacity: .9;
+}
+
+.sb-card{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+
+.sb-avatar{
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 18px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.sb-avatar img{
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.sb-info{ flex: 1; }
+
+#scoreboard .sb-name{
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+}
+
+.sb-sub{
+  margin-top: 4px;
+  font-size: 12px;
+  opacity: 0.9;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sb-pill.sb-bati-btn{
+  cursor: pointer;
+  user-select: none;
+  font-weight: 900;
+  opacity: 1;
+
+  background: linear-gradient(180deg, #1a73e8, #0d47a1) !important;
+  color: #fff !important;
+
+  border: 1px solid rgba(255,255,255,0.25);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+  transition: all 0.15s ease;
+}
+
+.sb-pill.sb-bati-btn:hover{
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.35);
+}
+
+.sb-pill.sb-bati-btn.is-disabled-ui{
+  background: linear-gradient(180deg, #e53935, #b71c1c) !important;
+  color: #fff !important;
+  opacity: 1;
+}
+
+.sb-pill.sb-bati-btn.is-active{
+  background: linear-gradient(180deg, #2ecc71, #27ae60) !important;
+  color: #fff !important;
+}
+
+.sb-jogar-vira-btn {
+  cursor: pointer;
+  border: 1px solid #ffd54a;
+  background: linear-gradient(
+    180deg,
+    #fff2a8 0%,
+    #d5a514 100%
+  );
+  color: #171100;
+  font-weight: 800;
+}
+
+.sb-jogar-vira-btn:hover {
+  filter: brightness(1.08);
+}
+
+#batidaBanner{
+  position: fixed;
+  top: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+
+  background: linear-gradient(180deg, #1a73e8, #0d47a1);
+  color: #fff;
+
+  padding: 8px 16px;
+  border-radius: 12px;
+
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  line-height: 1;
+
+  box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+
+  z-index: 9999;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+@media (max-width: 520px) and (orientation: portrait){
+  #batidaBanner{
+    top: 8%;
+    font-size: 13px;
+    padding: 7px 12px;
+    max-width: calc(100vw - 24px);
+    text-align: center;
+    white-space: nowrap;
+  }
+}
+
+#scoreboard .sb-pill{
+  font-size: 12px;
+  padding: 4px 8px;
+
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+
+  border-radius: 999px;
+
+  border: 1px solid rgba(255,255,255,0.15);
+
+  backdrop-filter: blur(4px);
+}
+
+/* extra do placar (elim/rebuy) */
+.sb-elims{
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.sb-elims-title{
+  font-weight: 900;
+  font-size: 13px;
+  opacity: .95;
+  margin-bottom: 8px;
+}
+.sb-eli-row{
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.10);
+  border: 1px solid rgba(255,255,255,0.10);
+}
+.sb-eli-name{ font-weight: 800; font-size: 12px; opacity: .95; }
+.sb-eli-when{ font-size: 12px; opacity: .85; }
+
+
+/* =============================
+   FICHAS / POTE
+============================= */
+.potBox{
+  width: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.chip-stack{
+  position: relative;
+  width: 70px;
+  height: 90px;
+  border-radius: 10px;
+  display: grid;
+  place-items: end center;
+}
+
+.chip{
+  position: absolute;
+  bottom: calc(var(--i) * 7px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50px;
+  height: 50px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border: none;
+  border-radius: 999px;
+  filter: drop-shadow(0 10px 16px rgba(0,0,0,0.35));
+}
+
+/* imagens por denominação */
+.chip-1    { background-image: url("/assets/image/chip-1.png"); }
+.chip-5    { background-image: url("/assets/image/chip-5.png"); }
+.chip-25   { background-image: url("/assets/image/chip-25.png"); }
+.chip-50   { background-image: url("/assets/image/chip-50.png"); }
+.chip-100  { background-image: url("/assets/image/chip-100.png"); }
+.chip-500  { background-image: url("/assets/image/chip-500.png"); }
+.chip-1000 { background-image: url("/assets/image/chip-1000.png"); }
+.chip-5000 { background-image: url("/assets/image/chip-5000.png"); }
+
+.pot-label{
+  font-size: 15px;
+  opacity: 0.9;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   FIX: SALA DE MESAS NO MOBILE (mostrar as 6 mesas)
+   - libera scroll na página
+   - deixa o scroll travado apenas no #game
+========================================================= */
+@media (max-width: 600px){
+
+  /* ✅ precisa rolar na sala de mesas */
+  html, body{
+    height: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  /* garante espaço pra rolagem */
+  #tablesScreen{
+    min-height: 100vh !important;
+    padding-bottom: 24px !important;
+  }
+
+  /* 1 coluna no mobile e sem limites de altura */
+  #tablesGrid{
+    grid-template-columns: 1fr !important;
+    max-width: 520px !important;
+    margin: 0 auto !important;
+  }
+
+  /* ✅ quando estiver no jogo, aí sim não deixa rolar a página */
+  #game{
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+}
+/* página inicial do celular*/
+
+/* ===== HOME SCREEN (mobile) ===== */
+#homeScreen{
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 24px;
+  padding: 24px 16px;
+  background: hsl(0, 14%, 96%); /* ou seu fundo verde */
+}
+
+.home-logo img {
+  max-width: 280px;
+  width: 80%;
+  height: auto;
+  display: block;
+  margin: 20px auto 0;
+
+  background: transparent;
+  border-radius: 15px;
+  box-shadow: none;
+
+  transition: .25s;
+}
+
+.home-logo img:hover{
+  transform: translateY(-3px);
+  box-shadow: 0 22px 45px rgba(0,0,0,.38);
+}
+
+.home-menu{
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.home-menu button{
+  padding: 18px 16px;
+  font-size: 22px;
+  font-weight: 900;
+  border-radius: 14px;
+  border: none;
+  background: #1fb455;
+  color: #fff;
+  cursor: pointer;
+}
+
+.home-menu button.primary{
+  background: #1fb455;
+}
+
+.home-menu button:active{
+  transform: translateY(1px);
+}
+
+.home-menu button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+}
+
+.home-menu button[style*="display:none"],
+.home-menu button[style*="display: none"] {
+  display: none !important;
+}
+
+.home-menu .btn-icon {
+  width: 26px;
+  min-width: 26px;
+  height: 26px;
+
+  display: grid;
+  place-items: center;
+
+  font-size: 19px;
+  line-height: 1;
+  color: rgba(255,255,255,0.92);
+}
+
+.home-menu .btn-text {
+  flex: 1;
+  text-align: left;
+}
+
+#btnLogout .btn-icon {
+  color: #ff5a4f;
+}
+
+
+/* =============================
+   HOME DESKTOP CHEIA (portal)
+============================= */
+
+@media (min-width: 900px){
+
+  /* hero: logo | menu | status */
+  #homeScreen .home-shell{
+    width: min(95%, 96vw);
+    display: grid;
+    grid-template-columns: 1.2fr 0.7fr 0.6fr; /* logo | botões | status */
+    gap: 18px;
+    align-items: center;
+    padding: 18px;
+    border-radius: 18px;
+    background: #f1f0ea;
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.10);
+  }
+
+  /* menu fica “coluna” e centralizado */
+  #homeScreen .home-menu{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  #homeScreen .home-menu button{
+    padding: 14px 14px;
+    border-radius: 16px;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+    background: linear-gradient(180deg,#a51f36,#731726);
+    box-shadow: 0 8px 18px rgba(0,0,0,.20);
+    border: 1px solid rgba(212,175,55,.30);
+  }
+
+  #homeScreen .home-menu button:hover{
+  background: linear-gradient(180deg,#bd2941,#8b1d2f);
+  transform: translateY(-1px);
+  }
+
+  #homeScreen #btnOnline{
+    padding: 16px 14px;
+    font-size: 20px;
+  }
+
+  /* status à direita (compacto) */
+  #homeScreen .home-status{
+    border-radius: 16px;
+    padding: 14px;
+    border: 1px solid rgba(0,0,0,0.06);
+    background: linear-gradient(180deg, #06391f, #032514);
+    border: 1px solid rgba(212,175,55,.35);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 22px rgba(0,0,0,.18);
+  }
+
+  #homeScreen .panel-title{
+    font-weight: 900;
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #fff;
+
+  }
+/* Painel Status*/
+  #homeScreen .panel-row{
+  display:flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+
+  background: rgba(255,255,255,.86);
+  border: 1px solid rgba(212,175,55,.25);
+
+  margin-bottom: 8px;
+  color: #081f12;
+  font-weight: 700;
+}
+
+  /* banner */
+  .home-banner {
+  width: min(95%, 96vw);
+  height: 120px;
+  margin: 14px auto;
+  padding: 18px 28px;
+  border-radius: 16px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+
+  background: linear-gradient(135deg, #07351f, #041f14);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+
+  color: #fff;
+}
+
+.home-banner-text {
+  flex: 1;
+  text-align: center;
+}
+
+.home-banner-title {
+  font-size: 20px;
+  font-weight: 900;
+  margin-bottom: 8px;
+}
+
+.home-banner-sub {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.home-banner-cards {
+  width: 160px;
+  max-width: 28%;
+  filter: drop-shadow(0 8px 14px rgba(0,0,0,0.45));
+}
+
+  /* últimas mesas: 3 em uma linha */
+  #homeScreen .home-lastrow{
+    width: min(1120px, 96vw);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    
+  }
+
+  #homeScreen .home-panel{
+    border-radius: 16px;
+    padding: 14px;
+    background: rgba(69, 142, 236, 0.95);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.08);
+  }
+
+  #homeScreen .last-table{
+    display:flex;
+    justify-content: space-between;
+    align-items:center;
+    gap: 10px;
+    padding: 10px 10px;
+    border-radius: 12px;
+    background: #f5c542;
+    color: #002a75;
+    border: 1px solid rgba(0,0,0,0.05);
+  }
+
+  #homeScreen .lt-name{ font-weight: 900; }
+  #homeScreen .lt-sub{ font-size: 12px; opacity: .85; margin-top: 2px; }
+
+  #homeScreen .lt-btn{
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: none;
+    background: #002a75;
+    color: #f5c542;
+    font-weight: 900;
+    cursor: pointer;
+  }
+}
+@media (min-width: 900px){
+
+  .watch-btn{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    padding: 8px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.15);
+    color: white;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .watch-icon{
+    width: 16px;
+    height: 16px;
+    fill: yellow;
+  }
+
+  .watch-text{
+    display: inline;
+  }
+}
+
+/* =============================
+   HOME DESKTOP: centralizar + background nas laterais
+============================= */
+@media (min-width: 900px){
+html, body {
+  min-height: 100%;
+  margin: 0;
+
+  background:
+    linear-gradient(rgba(0, 70, 25, 0.35), rgba(0, 45, 20, 0.55)),
+    url("/assets/image/bg-g.png") center / cover fixed no-repeat;
+
+  background-color: #063f1f;
+}
+
+  /* container da home ocupa a tela e centraliza tudo */
+  #homeScreen{
+    min-height: 100vh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;     /* ✅ centraliza horizontal */
+    justify-content: flex-start;
+    padding: 26px 18px 36px;
+    gap: 16px;
+    background: transparent; /* deixa o background do body aparecer nas laterais */
+  }
+
+  /* garante que os “blocos” ficam centrados */
+  #homeScreen .home-shell,
+  #homeScreen .home-banner,
+  #homeScreen .home-lastrow{
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+.seat.occupied{
+  opacity: 1;
+  
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/*animação do pote*/
+/*
+.pot-update {
+  transform: scale(1.15);
+  transition: transform 0.2s ease;
+}*/
+
+/* Contador Jogador - relogio*/
+.table-visual{
+  position: relative;
+}
+
+.table-center-info{
+  position: absolute;
+  left: 50%;
+  top: 61%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.table-players-count{
+  min-width: 44px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(255,255,255,0.16);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+
+.table-start-timer{
+  min-width: 42px;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 900;
+  color: #fff;
+  background: rgba(25, 110, 25, 0.72);
+  border: 1px solid rgba(255,255,255,0.16);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+
+.seat-empty-number{
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+/* Termina aqui*/
+
+
+/* Barra de tempo*/
+.table-start-wrap{
+  width: 120px; /* tamanho*/
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* trilho (fundo) */
+.table-start-bar{
+  width: 100%;
+  height: 8px; /*Espessura*/
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.08);
+  position: relative;
+}
+
+/* preenchimento */
+.table-start-bar-fill{
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+
+  /*background: linear-gradient(90deg,#1aff66,#00c853 ); /*Verde*/
+  /*background: linear-gradient(90deg,#00c6ff, #0072ff ); /*Azul*/
+  background: linear-gradient(90deg,#ffd700, #ffb300 ); /*Dourado*/
+
+
+  box-shadow:
+    0 0 6px rgba(0,255,100,0.6),
+    0 0 12px rgba(0,255,100,0.3);
+
+  transition: width 0.5s linear;
+  position: relative;
+}
+
+/* brilho passando (efeito premium) */
+.table-start-bar-fill::after{
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255,255,255,0.6),
+    transparent
+  );
+
+  animation: bar-shine 1.5s linear infinite; /*Velocidade do brilho*/
+}
+
+@keyframes bar-shine {
+  0% { left: -40%; }
+  100% { left: 120%; }
+}
+/* Termina aqui*/
+
+
+/* =========================================================
+   PAINEL DE ORDENAÇÃO DAS CARTAS
+========================================================= */
+
+#sortPanel{
+  position:absolute;
+  left:18px;
+  bottom:22px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:4px;
+
+  z-index:30;
+}
+
+.sort-title{
+  padding-left:2px;
+
+  color:#ffd86b;
+
+  font-size:11px;
+  font-weight:900;
+  line-height:1;
+
+  text-shadow:0 1px 3px rgba(0,0,0,.85);
+}
+
+.sort-buttons{
+  display:flex;
+  align-items:center;
+  gap:5px;
+}
+
+.sort-btn{
+  width:38px;
+  height:48px;
+  padding:0;
+
+  display:grid;
+  place-items:center;
+
+  border:0;
+  border-radius:6px;
+
+  background:transparent;
+
+  cursor:pointer;
+
+  transition:
+    transform .12s ease,
+    filter .12s ease;
+}
+
+.sort-btn:hover{
+  transform:translateY(-2px);
+  filter:brightness(1.06);
+}
+
+.sort-btn:active{
+  transform:scale(.94);
+}
+
+.sort-btn:focus-visible{
+  outline:2px solid #ffd86b;
+  outline-offset:2px;
+}
+
+.sort-card{
+  position:relative;
+
+  width:34px;
+  height:44px;
+  box-sizing:border-box;
+
+  overflow:hidden;
+
+  border-radius:5px;
+  border:1px solid #c9b77e;
+
+  background:
+    linear-gradient(180deg,#fffef7,#f0ead7);
+
+  box-shadow:
+    0 2px 5px rgba(0,0,0,.38),
+    inset 0 0 0 1px rgba(255,255,255,.8);
+
+  color:#111;
+
+  font-family:Georgia, "Times New Roman", serif;
+}
+
+.sort-card::after{
+  content:"";
+
+  position:absolute;
+  inset:2px;
+
+  border-radius:3px;
+  border:1px solid rgba(116,91,28,.20);
+
+  pointer-events:none;
+}
+
+/* Botão por valor */
+
+.sort-card-value{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1px;
+}
+
+.sort-values-grid{
+  position:relative;
+  z-index:1;
+
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  align-items:center;
+  justify-items:center;
+
+  width:24px;
+
+  gap:2px 5px;
+
+  font-size:13px;
+  font-weight:900;
+  line-height:1;
+}
+
+/* Botão por naipe */
+
+.sort-card-suit{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+
+.sort-suit-column{
+  position:relative;
+  z-index:1;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:2px;
+
+  font-size:14px;
+  line-height:1;
+}
+
+.sort-card .red{
+  color:#c7192d;
+}
+
+.sort-card .black{
+  color:#111;
+}
+
+
+/* Estilo dos Avisos*/
+.game-notice{
+  position: fixed;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%) translateY(-8px);
+  z-index: 99999;
+
+  max-width: min(92vw, 420px);
+  min-width: 180px;
+  padding: 10px 14px;
+  border-radius: 12px;
+
+  background: rgba(20, 20, 24, 0.94);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.10);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.22);
+
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+  backdrop-filter: blur(8px);
+}
+
+.game-notice.show{
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.game-notice.warn{
+  background: rgba(55, 42, 20, 0.95);
+  border-color: rgba(255, 202, 95, 0.25);
+}
+
+.game-notice.error{
+  background: rgba(58, 22, 22, 0.95);
+  border-color: rgba(255, 120, 120, 0.26);
+}
+
+.game-notice.ok{
+  background: rgba(20, 52, 30, 0.95);
+  border-color: rgba(120, 255, 170, 0.24);
+}
+
+@media (max-width: 520px){
+  .game-notice{
+    top: 10px;
+    max-width: 94vw;
+    min-width: 0;
+    padding: 9px 12px;
+    font-size: 13px;
+    border-radius: 10px;
+  }
+}
+
+/* Termina aqui*/
+
+/* Variant começa aqui*/
+
+.table-variant {
+  margin-left: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.home-variant-chooser{
+  width: min(92vw, 520px);
+  margin: 24px auto 0;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(0,0,0,0.18);
+  border: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(8px);
+  text-align: center;
+}
+
+.home-variant-title{
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 14px;
+}
+
+.home-variant-actions{
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.home-variant-actions button{
+  min-width: 180px;
+}
+
+/*Termina aqui*/
+
+/* Feed*/
+.home-status-feed{
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(212,175,55,.10);
+  border: 1px solid rgba(212,175,55,.22);
+
+  min-height: 40px;
+  color: rgba(255,255,255,0.92);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+.home-status-feed-text{
+  display: block;
+}
+/* Termina aqui*/
+
+/* Mesa Azul*/
+#tablesScreen.tables-crazy-mode{
+  background: linear-gradient(rgba(10, 35, 70, 0.72), rgba(10, 35, 70, 0.72));
+  background-image: url("/assets/image/bg-b.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+#tablesScreen.tables-crazy-mode .tables-title,
+#tablesScreen.tables-crazy-mode .table-title,
+#tablesScreen.tables-crazy-mode .table-value,
+#tablesScreen.tables-crazy-mode .table-hint{
+  color: #eaf4ff;
+}
+/* termina aqui*/
+
+/* Home*/
+.home-userbar {
+  width: min(92vw, 520px);
+  margin: 0 auto 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-userinfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-user-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.18);
+}
+
+.home-user-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+#homeUserName {
+  font-weight: 800;
+}
+
+#homeUserBalance,
+#homeUserCashBalance {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.home-user-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .home-userbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .home-user-actions {
+    justify-content: center;
+  }
+}
+/* Termina aqui*/
+
+.home-status-wrap{
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.home-usercard{
+  border-radius: 20px;
+  padding: 12px 14px;
+  color: #fff;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #06391f, #032514);
+  border: 1px solid rgba(212,175,55,.38);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 22px rgba(0,0,0,.18);
+}
+
+.home-usercard-row{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-user-avatar{
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.home-user-meta{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#homeUserName{
+  font-weight: 800;
+}
+
+#homeUserBalance,
+#homeUserCashBalance{
+  font-size: 13px;
+  opacity: 0.92;
+}
+
+/* =========================================================
+   SCOREBOARD DESKTOP - 3 LINHAS FIXAS
+========================================================= */
+#scoreboard .sb-sub-desktop{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+#scoreboard .sb-sub-desktop .sb-sub-row{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+#scoreboard .sb-bati-placeholder{
+  visibility: hidden;
+  min-width: 72px;
+}
+
+
+@media (max-width: 520px) and (orientation: portrait){
+  #scoreboard .sb-sub-desktop{
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  #scoreboard .sb-sub-desktop .sb-sub-row{
+    display: contents !important;
+  }
+
+  #scoreboard .sb-bati-placeholder{
+    display: none !important;
+  }
+}
+
+#scoreboard .sb-card{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 2px 14px;
+  border-radius: 14px;
+
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(6px);
+
+  border: 1px solid rgba(255,255,255,0.12);
+
+  box-shadow: 0 10px 28px rgba(0,0,0,0.35);
+}
+
+
+/* baralho acabou*/
+
+#roundBanner{
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+
+  padding: 10px 18px;
+  border-radius: 12px;
+
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+
+  font-weight: 900;
+  font-size: 14px;
+
+  z-index: 999999;
+  pointer-events: none;
+
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+/* Termina aqui*/
+
+.tables-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* Botão fixo na esquerda */
+.tables-back-btn {
+  position: fixed !important;
+  top: 18px !important;
+  left: 18px !important;
+  z-index: 9999 !important;
+
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.tables-back-btn:hover {
+  background: rgba(255,255,255,0.16);
+}
+.tables-tabs-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.tables-tabs {
+  display: flex;
+  gap: 12px;
+}
+@keyframes tableStartShrink {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+#btnCrazy {
+  background: linear-gradient(180deg, #3b82f6, #1e40af) !important;
+  color: #fff !important;
+}
+
+/* =========================================================
+   HOME - MESAS AO VIVO / DICA / RODAPÉ
+========================================================= */
+
+.home-tip-section {
+  width: min(1120px, 96vw);
+  margin: 2px auto 0;
+  padding: 16px 18px;
+  border-radius: 18px;
+
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255,255,255,0.12);
+
+  color: #fff;
+}
+
+.home-tip-title {
+  font-weight: 900;
+  color: #ffd54a;
+  margin-bottom: 6px;
+}
+
+.home-tip-section .home-status-feed {
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+}
+
+.home-footer{
+  width: 95%;
+  margin-top: 30px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  background: rgba(0,0,0,.18);
+  border-bottom: 1px solid rgba(212,175,55,.25);
+  color: rgba(255,255,255,.75);
+  font-size: 13px;
+}
+
+.home-footer a{
+  color: #dbeafe;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.home-footer a:hover{
+  text-decoration: underline;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .home-live-row {
+    grid-template-columns: 1fr;
+  }
+
+  .home-section-title {
+    text-align: center;
+  }
+
+  .home-live-card {
+    padding: 12px;
+  }
+
+  .home-footer{
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+}
+
+/* =========================================================
+   HOME - MESAS AO VIVO VISUAL PROFISSIONAL
+========================================================= */
+
+.home-live-section {
+  width: min(95%, 96vw);
+  margin: 12px auto 0;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+
+.home-section-title {
+  font-size: 22px;
+  font-weight: 900;
+  margin-bottom: 14px;
+  text-align: left;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.45);
+}
+
+.home-live-row-visual {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.home-live-card-visual {
+  position: relative;
+  min-height: 260px;
+  padding: 14px 14px 16px;
+  border-radius: 16px;
+
+  background: linear-gradient(
+    180deg,
+    rgba(0, 40, 20, 0.78),
+    rgba(0, 18, 10, 0.88)
+  );
+
+  border: 1px solid rgba(255,255,255,0.18);
+  box-shadow: 0 14px 34px rgba(0,0,0,0.28);
+
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+}
+
+.home-live-card-visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top, rgba(40,255,120,0.16), transparent 55%);
+  pointer-events: none;
+}
+
+.home-live-count {
+  position: relative;
+  z-index: 2;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-width: 66px;
+  height: 28px;
+  padding: 0 10px;
+  margin-bottom: 8px;
+
+  border-radius: 999px;
+  background: rgba(0,0,0,0.52);
+  border: 1px solid rgba(255,255,255,0.14);
+
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.home-live-table-visual {
+  position: relative;
+  width: 170px;
+  height: 92px;
+  margin: 6px auto 18px;
+}
+
+.home-live-table-felt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+
+  width: 150px;
+  height: 72px;
+  transform: translate(-50%, -50%);
+
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at center, rgba(20,180,70,0.98), rgba(0,95,35,0.98) 60%, rgba(0,50,20,1));
+
+  border: 4px solid rgba(180, 120, 55, 0.9);
+
+  box-shadow:
+    inset 0 0 18px rgba(0,0,0,0.45),
+    0 8px 20px rgba(0,0,0,0.35);
+}
+
+.home-live-seat {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.22);
+
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+
+  box-shadow: 0 4px 10px rgba(0,0,0,0.32);
+}
+
+.home-live-seat.occupied {
+  border-color: rgba(255, 210, 90, 0.9);
+  background: rgba(255, 210, 90, 0.18);
+}
+
+.home-live-seat img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.home-live-seat-1 {
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.home-live-seat-2 {
+  left: 22px;
+  top: 10px;
+}
+
+.home-live-seat-3 {
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+}
+
+.home-live-seat-4 {
+  right: 22px;
+  top: 10px;
+}
+
+.home-live-seat-5 {
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.home-live-seat-6 {
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
+.home-live-name {
+  position: relative;
+  z-index: 2;
+
+  font-size: 20px;
+  font-weight: 900;
+  margin-top: 4px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.45);
+}
+
+.home-live-stake {
+  position: relative;
+  z-index: 2;
+
+  margin-top: 8px;
+  font-size: 15px;
+  color: rgba(255,255,255,0.92);
+}
+
+.home-live-stake strong {
+  color: #ffd54a;
+}
+
+.home-live-watch {
+  position: relative;
+  z-index: 2;
+
+  width: 82%;
+  margin-top: 16px;
+  padding: 11px 16px;
+
+  border: none;
+  border-radius: 10px;
+
+  background: linear-gradient(180deg, #20c463, #0b8338);
+  color: #fff;
+
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+
+  box-shadow: 0 8px 18px rgba(0,0,0,0.28);
+}
+
+.home-live-enter:hover {
+  filter: brightness(1.08);
+}
+
+.home-live-empty {
+  grid-column: 1 / -1;
+  padding: 18px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.28);
+  color: #fff;
+  text-align: center;
+  font-weight: 800;
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .home-live-row-visual {
+    grid-template-columns: 1fr;
+  }
+
+  .home-section-title {
+    text-align: center;
+  }
+
+  .home-live-card-visual {
+    min-height: 245px;
+  }
+}
+
+/*============================================================
+HOME - CARTEIRA PIX
+=============================================================*/
+.wallet-modal.hidden,
+.wallet-pix-area.hidden{
+  display: none !important;
+}
+
+.wallet-modal{
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0,0,0,.65);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.wallet-card{
+  width: min(520px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #0b3d2e;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 18px;
+  padding: 22px;
+  color: #fff;
+  box-shadow: 0 18px 50px rgba(0,0,0,.45);
+  position: relative;
+}
+
+.wallet-close{
+  position: absolute;
+  right: 14px;
+  top: 10px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 30px;
+  cursor: pointer;
+}
+
+.wallet-card h2{
+  margin: 0 0 6px;
+  font-size: 24px;
+}
+
+.wallet-subtitle{
+  margin: 0 0 16px;
+  opacity: .85;
+}
+
+.wallet-packages{
+  display: grid;
+  gap: 10px;
+}
+
+.wallet-package-btn{
+  border: 1px solid rgba(255,255,255,.2);
+  background: linear-gradient(135deg, #19b85a, #127cdb);
+  color: #fff;
+  border-radius: 14px;
+  padding: 12px 14px;
+  cursor: pointer;
+  font-weight: 800;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wallet-package-btn:hover{
+  filter: brightness(1.08);
+}
+
+.wallet-pix-area{
+  margin-top: 18px;
+  display: grid;
+  gap: 10px;
+}
+
+.wallet-pix-qr{
+  width: 180px;
+  max-width: 70vw;
+  justify-self: center;
+  background: #fff;
+  padding: 8px;
+  border-radius: 10px;
+}
+
+#walletPixCode{
+  width: 100%;
+  min-height: 90px;
+  resize: vertical;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.wallet-copy-btn{
+  border: 0;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  font-weight: 800;
+  background: #ffd54a;
+  color: #222;
+}
+
+.wallet-msg{
+  margin-top: 12px;
+  min-height: 20px;
+  color: #ffd54a;
+  font-weight: 700;
+}
+
+
+/* Admin Financeiro*/
+
+.admin-page{
+  margin: 0;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #0b3c66, #071d31);
+  color: #fff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.admin-wrap{
+  max-width: 1150px;
+  margin: 0 auto;
+  padding: 28px;
+}
+
+.admin-actions{
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-actions button{
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  background: #1e88e5;
+  color: #fff;
+}
+
+.admin-message{
+  margin-bottom: 16px;
+  color: #ffd54a;
+  font-weight: 700;
+}
+
+.finance-cards{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.finance-card{
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.16);
+  border-radius: 16px;
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.finance-card span{
+  opacity: .8;
+  font-size: 14px;
+}
+
+.finance-card strong{
+  font-size: 26px;
+}
+
+.finance-table-wrap{
+  overflow-x: auto;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 16px;
+}
+
+.finance-table{
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 850px;
+}
+
+.finance-table th,
+.finance-table td{
+  padding: 12px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+  text-align: left;
+  font-size: 14px;
+}
+
+.finance-table th{
+  color: #ffd54a;
+}
+
+@media (max-width: 800px){
+  .finance-cards{
+    grid-template-columns: 1fr;
+  }
+
+  .admin-wrap{
+    padding: 18px;
+  }
+}
+
+/* Termina aqui*/
+
+/* =========================
+   MENU TOPO - LOGO + LINKS
+========================= */
+
+.top-nav{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:18px;
+
+  padding:12px 22px;
+  margin-bottom:22px;
+
+  background:rgba(4,45,25,.78);
+
+  border:1px solid rgba(212,175,55,.18);
+  border-bottom:2px solid rgba(212,175,55,.28);
+
+  border-radius:14px;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.05),
+    0 10px 22px rgba(0,0,0,.20);
+
+  backdrop-filter: blur(6px);
+}
+
+.top-nav-right{
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 30px;
+}
+
+.top-nav a{
+  display:flex;
+  align-items:center;
+  gap:8px;
+
+  color:#fff;
+  font-weight:700;
+
+  text-decoration:none;
+
+  transition:.18s;
+}
+
+.top-nav a:hover{
+  color:#f2d36b;
+  transform:translateY(-1px);
+}
+
+.top-nav-right a:hover{
+  color: #ffd54a;
+}
+
+.nav-icon{
+  width:22px;
+  text-align:center;
+  font-size:18px;
+
+  color:#d4af37;
+
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.45));
+}
+
+@media (max-width: 640px){
+  #topNav{
+    display:none !important;
+  }
+}
+
+.mobile-only-home-btn{
+  display: none !important;
+}
+
+@media (max-width: 640px){
+  .home-menu .mobile-only-home-btn{
+    display: flex !important;
+  }
+}
+
+/* Termina aqui*/
+
+/* =========================================================
+   CACHETÃO PRO — PAINEL INFERIOR DIREITO V2
+========================================================= */
+
+@media (min-width: 901px) {
+
+  #scoreboard {
+    width: 270px !important;
+    max-height: 154px !important;
+  }
+
+  #scoreboard .sb-card {
+    padding: 8px 12px !important;
+    border-radius: 20px !important;
+
+    background:
+      linear-gradient(180deg, rgba(18,18,18,.94), rgba(0,0,0,.82)) !important;
+
+    border: 1px solid rgba(212,166,54,.78) !important;
+
+    box-shadow:
+      0 14px 34px rgba(0,0,0,.48),
+      inset 0 1px 0 rgba(255,255,255,.10),
+      0 0 14px rgba(212,166,54,.20) !important;
+  }
+
+  #scoreboard .sb-avatar {
+    width: 45px !important;
+    height: 45px !important;
+    flex: 0 0 45px !important;
+
+    border: 2px solid rgba(255,215,0,.75) !important;
+    background: rgba(255,255,255,.10) !important;
+
+    box-shadow:
+      0 0 10px rgba(255,215,0,.35),
+      inset 0 1px 0 rgba(255,255,255,.12) !important;
+  }
+
+  #scoreboard .sb-name {
+    font-size: 14px !important;
+    color: #fffdf4 !important;
+    letter-spacing: .3px !important;
+    text-shadow: 0 2px 3px rgba(0,0,0,.75) !important;
+  }
+
+  #scoreboard .sb-sub-desktop {
+    gap: 5px !important;
+    margin-top: 5px !important;
+  }
+
+  #scoreboard .sb-sub-row {
+    gap: 7px !important;
+  }
+
+  #scoreboard .sb-pill {
+    padding: 4px 8px !important;
+    border-radius: 999px !important;
+
+    background: rgba(255,255,255,.10) !important;
+    border: 1px solid rgba(212,166,54,.35) !important;
+
+    color: #fff !important;
+    font-size: 11px !important;
+    font-weight: 900 !important;
+
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,.10),
+      0 3px 8px rgba(0,0,0,.25) !important;
+  }
+
+  #scoreboard .sb-cachetao-jogar-btn {
+    background: linear-gradient(180deg, #1fc46b, #087d3e) !important;
+    border-color: rgba(170,255,205,.50) !important;
+  }
+
+  #scoreboard .sb-cachetao-correr-btn {
+    background: linear-gradient(180deg, #666, #2d2d2d) !important;
+    border-color: rgba(255,255,255,.25) !important;
+  }
+
+  #scoreboard .sb-cachetao-marra-btn {
+    background: linear-gradient(180deg, #ff3838, #990000) !important;
+    border-color: #ffd54d !important;
+    box-shadow: 0 0 10px rgba(255,0,0,.55) !important;
+  }
+
+  #scoreboard .sb-bati-btn {
+    background: linear-gradient(180deg, #ffd54d, #b8860b) !important;
+    color: #1d1200 !important;
+    border-color: rgba(255,245,180,.75) !important;
+  }
+
+  #scoreboard .sb-turnbar {
+    height: 5px !important;
+    margin: 5px 0 6px !important;
+    background: rgba(255,255,255,.14) !important;
+    border-color: rgba(212,166,54,.24) !important;
+  }
+
+  #scoreboard .sb-turnbar-fill {
+    background: linear-gradient(90deg, #ffd54d, #ff9f1a) !important;
+  }
+}
+
+.table-value{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+
+    margin:8px auto 6px;
+
+    padding:5px 14px;
+
+    border-radius:999px;
+
+    background:linear-gradient(
+        180deg,
+        rgba(25,25,25,.95),
+        rgba(8,8,8,.95)
+    );
+
+    border:1px solid rgba(212,175,55,.65);
+
+    color:#ffd86b;
+    font-weight:900;
+    font-size:14px;
+
+    width:fit-content;
+
+    box-shadow:
+        0 2px 10px rgba(0,0,0,.35),
+        inset 0 1px rgba(255,255,255,.08);
+}
+
+.table-value .chip{
+    font-size:12px;
+}
+
+#vira-card.vira-selectable,
+#mobileViraCard.vira-selectable {
+  cursor: pointer;
+}
+
+#vira-card.selected,
+#mobileViraCard.selected {
+  transform: translateY(-8px);
+  outline: 3px solid #ffd54a;
+  box-shadow: 0 0 14px rgba(255, 213, 74, 0.9);
+}
+
+.dealer-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      #fff 0%,
+      #f1f1f1 48%,
+      #c8c8c8 100%
+    );
+
+  border: 2px solid #d4af37;
+
+  color: #151515;
+  font-weight: 900;
+
+  box-shadow:
+    0 2px 5px rgba(0, 0, 0, .55),
+    inset 0 0 0 2px rgba(255, 255, 255, .65);
+
+  pointer-events: none;
+  user-select: none;
+}

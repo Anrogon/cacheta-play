@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Cachetão Pro - Admin Financeiro</title>
+
+  <link rel="stylesheet" href="./css/reset.css">
+  <link rel="stylesheet" href="./css/admin.css">
+</head>
+
+<body class="admin-theme">
+  <main class="admin-wrap">
+
+    <header class="admin-topbar">
+      <div class="admin-brand">
+        <h1>💰 Admin • Financeiro</h1>
+
+        <p>
+          Cachetão Pro • receitas, depósitos e movimentações financeiras
+        </p>
+      </div>
+
+      <div class="admin-badge">
+        Área administrativa
+      </div>
+    </header>
+
+    <nav class="admin-toolbar" aria-label="Ações do Financeiro">
+      <div class="admin-toolbar-group">
+        <button
+          class="admin-btn admin-btn-secondary"
+          type="button"
+          onclick="window.location.href='./admin-home.html'"
+        >
+          ← Voltar ao painel
+        </button>
+
+        <button
+          class="admin-btn admin-btn-primary"
+          type="button"
+          onclick="loadFinance()"
+        >
+          🔄 Atualizar
+        </button>
+      </div>
+    </nav>
+
+    <div id="financeMessage" class="admin-msg">
+      Carregando financeiro...
+    </div>
+
+    <section
+      class="admin-finance-grid"
+      aria-label="Resumo financeiro"
+    >
+      <article class="admin-finance-card">
+        <span>Receita hoje</span>
+
+        <strong id="financeTodayAmount">
+          R$ 0,00
+        </strong>
+      </article>
+
+      <article class="admin-finance-card">
+        <span>Receita total</span>
+
+        <strong id="financeRevenueAmount">
+          R$ 0,00
+        </strong>
+      </article>
+
+      <article class="admin-finance-card">
+        <span>Total arrecadado</span>
+
+        <strong id="financeTotalAmount">
+          R$ 0,00
+        </strong>
+      </article>
+
+      <article class="admin-finance-card">
+        <span>Fichas vendidas</span>
+
+        <strong id="financeTotalChips">
+          0
+        </strong>
+      </article>
+
+      <article class="admin-finance-card">
+        <span>Depósitos aprovados</span>
+
+        <strong id="financeApprovedCount">
+          0
+        </strong>
+      </article>
+
+      <article class="admin-finance-card">
+        <span>Depósitos pendentes</span>
+
+        <strong id="financePendingCount">
+          0
+        </strong>
+      </article>
+    </section>
+
+    <h2 class="admin-section-title">
+      Solicitações de saque
+    </h2>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Usuário</th>
+            <th>E-mail</th>
+            <th>Valor</th>
+            <th>Tipo PIX</th>
+            <th>Chave PIX</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+
+        <tbody id="withdrawalTableBody">
+          <tr>
+            <td colspan="8">
+              Carregando...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="admin-section-title">
+      Últimas transações
+    </h2>
+
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Usuário</th>
+            <th>E-mail</th>
+            <th>Valor</th>
+            <th>Fichas</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+          </tr>
+        </thead>
+
+        <tbody id="financeTableBody">
+          <tr>
+            <td colspan="7">
+              Carregando...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+  </main>
+
+  <script src="./js/admin-finance.js"></script>
+</body>
+</html>

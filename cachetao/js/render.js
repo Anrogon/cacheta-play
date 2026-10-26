@@ -1,0 +1,3894 @@
+
+import {
+  toggleSelectCard,
+  comprarDoMonte,
+  discardSelectedCard,
+  layDownSelectedSet,
+  pegarDoLixo,
+  addCardToTableGame,
+  onClickLixo,
+  reorderHandByIds,
+  requestRebuy,
+  swapJokerOnTable,
+  jogarComAVira,
+  toggleSelectVira,
+  requestCancelCrazyBatidaAttempt,
+  requestStartCrazyBatidaAttempt,
+  requestStartBatidaComViraAttempt,
+  requestReentry,
+  declineReentry,
+  declineRebuy
+} from "./actions.js";
+
+import { state, currentPlayer } from "./state.js";
+
+// =============================
+// RESOLVER IMAGEM DA CARTA
+// =============================
+export function getCardImage(card) {
+  if (!card) {
+    console.warn("⚠️ getCardImage recebeu carta inválida:", card);
+    return "assets/cards/back-01.png";
+  }
+
+  if (card.isJoker) {
+    return "assets/cards/joker.png";
+  }
+
+  return `assets/cards/${card.valor}_${card.naipe}.png`;
+}
+
+
+export function renderPlayerInfo() {
+  const el = document.getElementById("player-info");
+  if (!el) return;
+
+    const linhas = state.players.map((pl, idx) => {
+    const pts = typeof pl.totalPoints === "number" ? pl.totalPoints : 0;
+    const vez = idx === state.currentPlayer ? "👉 " : "";
+    const morto = pl.eliminated ? " ☠️" : "";
+    const offline = pl.disconnected ? " (Offline)" : "";
+    return `${vez}${pl.name}${offline}: ${pts} pts${morto}`;
+  });
+
+  el.innerText = linhas.join(" | ");
+}
+
+// =============================
+// ANIMAÇÃO: CARTA VOADORA + SOM
+// =============================
+
+let dealAudio = null;
+let dealAudioPlaying = false;
+
+function getDealAudio() {
+  if (!dealAudio) {
+    dealAudio = new Audio("/assets/sfx/playing-cards.mp3");
+    dealAudio.loop = true;
+    dealAudio.volume = 0.5;
+  }
+  return dealAudio;
+}
+
+
+
+let __audioCtx = null;
+
+
+
+function getAudioCtx() {
+  if (!__audioCtx) {
+    __audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return __audioCtx;
+}
+
+
+function beep({ freq = 700, duration = 0.03, type = "square", gain = 0.03 } = {}) {
+  try {
+    const ctx = getAudioCtx();
+
+    const doPlay = () => {
+      try {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+
+        o.type = type;
+        o.frequency.value = freq;
+
+        // ataque/queda suaves pra evitar clique seco
+        const now = ctx.currentTime;
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.linearRampToValueAtTime(gain, now + 0.005);
+        g.gain.linearRampToValueAtTime(0.0001, now + duration);
+
+        o.connect(g);
+        g.connect(ctx.destination);
+
+        o.start(now);
+        o.stop(now + duration + 0.01);
+      } catch (err) {
+        console.error("[BEEP] erro ao tocar", err);
+      }
+    };
+
+    if (ctx.state === "suspended") {
+      ctx.resume()
+        .then(doPlay)
+        .catch(err => console.error("[BEEP] erro ao destravar áudio", err));
+      return;
+    }
+
+    doPlay();
+  } catch (err) {
+    console.error("[BEEP] erro geral", err);
+  }
+}
+
+const shuffleAudio = new Audio("./assets/sfx/shuffle.mp3");
+shuffleAudio.volume = 0.4;
+
+function playSfx(name) {
+  try {
+    unlockAudioOnce();
+  } catch (_) {}
+
+  console.log("[SFX] playSfx", name);
+
+  if (name === "shuffle") {
+  try {
+
+    const playShuffle = (delay) => {
+      setTimeout(() => {
+        try {
+          shuffleAudio.pause();
+          shuffleAudio.currentTime = 0;
+          shuffleAudio.play().catch(() => {});
+        } catch (_) {}
+      }, delay);
+    };
+
+    // toca 4 vezes durante os 10 segundos
+    playShuffle(0);
+    playShuffle(5000);
+    /*playShuffle(5000);
+    playShuffle(7500);*/
+
+  } catch (_) {}
+
+  return;
+}
+
+  // sons mais audíveis
+  if (name === "deal") {
+  const freq = 860 + Math.random() * 140; // varia entre ~860 e ~1000
+  return beep({ freq, duration: 0.05, type: "triangle", gain: 0.06 });
+  }
+  if (name === "draw")  return beep({ freq: 760, duration: 0.05, type: "triangle", gain: 0.05 });
+  if (name === "place") return beep({ freq: 610, duration: 0.05, type: "square", gain: 0.05 });
+  if (name === "drop")  return beep({ freq: 420, duration: 0.06, type: "sine", gain: 0.05 });
+
+  if (name === "win") {
+    beep({ freq: 620, duration: 0.07, type: "triangle", gain: 0.05 });
+    setTimeout(() => beep({ freq: 820, duration: 0.09, type: "triangle", gain: 0.055 }), 85);
+    setTimeout(() => beep({ freq: 1040, duration: 0.12, type: "triangle", gain: 0.06 }), 180);
+    return;
+  }
+}
+
+let lastDealSfxAt = 0;
+let audioUnlockBound = false;
+let lastRoundWinSfxTs = 0;
+
+function playDealSfxTick() {
+  playSfx("deal");
+}
+
+function unlockAudioOnce() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === "suspended") {
+      ctx.resume().catch(() => {});
+    }
+  } catch (_) {}
+}
+
+function bindAudioUnlockOnce() {
+  if (audioUnlockBound) return;
+  audioUnlockBound = true;
+
+  const handler = () => {
+    unlockAudioOnce();
+    window.removeEventListener("pointerdown", handler, true);
+    window.removeEventListener("touchstart", handler, true);
+    window.removeEventListener("keydown", handler, true);
+  };
+
+  window.addEventListener("pointerdown", handler, true);
+  window.addEventListener("touchstart", handler, true);
+  window.addEventListener("keydown", handler, true);
+}
+
+window.playSfx = playSfx;
+window.playDealSfxTick = playDealSfxTick;
+window.unlockAudioOnce = unlockAudioOnce;
+
+bindAudioUnlockOnce();
+
+function playRoundWinSfxOnce(summary) {
+  const ts = Number(summary?.timestamp || 0);
+  if (!ts) return;
+  if (ts === lastRoundWinSfxTs) return;
+
+  lastRoundWinSfxTs = ts;
+  playSfx("win");
+}
+
+/**
+ * Faz uma carta “voar” do elemento fromEl até toEl
+ */
+export function flyCard({
+  fromEl,
+  toEl,
+  card = null,
+  imageUrl = null,
+  sfx = null,
+  duration = 280,
+  className = ""
+}) {
+  if (!fromEl || !toEl) return;
+  if (!card && !imageUrl) return;
+
+  const from = fromEl.getBoundingClientRect();
+  const to = toEl.getBoundingClientRect();
+
+  const img = imageUrl || getCardImage(card);
+
+  const clone = document.createElement("div");
+  clone.className = `flying-card ${className}`.trim();
+  clone.style.backgroundImage = `url('${img}')`;
+
+  // posição inicial
+  clone.style.left = `${from.left}px`;
+  clone.style.top = `${from.top}px`;
+
+  // delta até o destino
+  const dx = (to.left - from.left);
+  const dy = (to.top - from.top);
+
+  clone.style.setProperty("--dx", `${dx}px`);
+  clone.style.setProperty("--dy", `${dy}px`);
+
+  // aplica mesma duração no CSS (opcional)
+  clone.style.transitionDuration = `${duration}ms`;
+
+  document.body.appendChild(clone);
+
+  // som sincronizado no START
+  // durante DEALING usamos o mp3 do overlay, então não toca o beep "deal" aqui
+  if (sfx && !(sfx === "deal" && state.faseTurno === "DEALING")) {
+    playSfx(sfx);
+  }
+
+  // dispara animação no próximo frame
+  requestAnimationFrame(() => {
+    clone.classList.add("done");
+    clone.style.transform =
+    `translate3d(${dx}px, ${dy}px, 0) scale(.95)`;
+  });
+
+  // remove no fim
+  setTimeout(() => {
+    clone.remove();
+  }, duration + 50);
+}
+
+
+export function renderNextPlayerButton() {
+  const btn = document.getElementById("nextPlayer");
+  if (!btn) return;
+
+  // Partida encerrada
+  if (state.partidaEncerrada) {
+    btn.innerText = "Partida encerrada";
+    btn.disabled = true;
+    return;
+  }
+
+  // Fim da rodada: botão vira "Próxima rodada"
+  if (state.rodadaEncerrada || state.faseTurno === "FIM_RODADA") {
+    btn.innerText = "Próxima rodada";
+    btn.disabled = false;
+    return;
+  }
+
+  // Rodada em andamento: botão é "Próximo jogador"
+  btn.innerText = "Próximo jogador";
+
+  // trava enquanto o turno não terminou
+  // (libera quando voltou para COMPRAR, ou seja, já descartou e passou o turno)
+  btn.disabled = state.faseTurno !== "COMPRAR";
+}
+
+let ignoreNextCardClick = false;
+
+const touchDragState = {
+  fromId: null,
+  fromEl: null,
+  targetId: null,
+  targetEl: null,
+  startX: 0,
+  startY: 0,
+  dragging: false,
+  holdTimer: null
+};
+
+function clearTouchDragState() {
+  if (touchDragState.holdTimer) {
+    clearTimeout(touchDragState.holdTimer);
+    touchDragState.holdTimer = null;
+  }
+
+  touchDragState.fromId = null;
+  touchDragState.startX = 0;
+  touchDragState.startY = 0;
+  touchDragState.dragging = false;
+
+  if (touchDragState.fromEl) {
+    touchDragState.fromEl.classList.remove("touch-dragging");
+  }
+  if (touchDragState.targetEl) {
+    touchDragState.targetEl.classList.remove("touch-drop-target");
+  }
+
+  touchDragState.fromEl = null;
+  touchDragState.targetId = null;
+  touchDragState.targetEl = null;
+}
+
+function findCardElementFromTouch(touch) {
+  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+  if (!el) return null;
+  return el.closest?.(".card") || null;
+}
+
+export function createCardElement(card, { selectable = false } = {}) {
+  const div = document.createElement("div");
+  div.className = "card";
+  div.style.backgroundImage = `url('${getCardImage(card)}')`;
+
+  // ✅ aplica visual de seleção
+  if (state.selectedCards.includes(card.id)) {
+    div.classList.add("selected");
+  }
+
+  if (selectable && !state.spectator) {
+    div.onclick = () => {
+      if (ignoreNextCardClick) {
+        ignoreNextCardClick = false;
+        return;
+      }
+
+      toggleSelectCard(card.id);
+      renderAll();
+    };
+  }
+  return div;
+}
+
+
+let lastDealAnimationKey = "";
+let lastDealAnimatedCount = 0;
+let lastDealHudAnimationKey = "";
+let lastDealHudAnimatedCount = 0;
+
+function animateDealRoundToOtherPlayers(roundNumber) {
+  const monteEl = document.getElementById("monte");
+
+  if (!monteEl) return;
+
+  const s = getPublicStateSafe();
+
+  const players = getPlayersForMobileTable()
+    .filter(Boolean)
+    .filter(p => {
+      const seat = Number(p?.seat);
+
+      if (!seat) return false;
+
+      // minha própria mão já tem animação separada
+      if (seat === Number(s.mySeat ?? state.mySeat)) {
+        return false;
+      }
+
+      const handCount = Number(
+        p.handCount ??
+        p.cardsCount ??
+        p.handLength ??
+        p.cardCount ??
+        (Array.isArray(p.hand) ? p.hand.length : 0)
+      );
+
+      return handCount >= roundNumber;
+    })
+    .sort((a, b) => Number(a.seat) - Number(b.seat));
+
+  players.forEach((p, index) => {
+    const seat = Number(p.seat);
+
+    setTimeout(() => {
+      // confirma de novo porque o HUD pode ter sido renderizado
+      // entre o agendamento e a animação
+      const toEl = getHudCardsTargetBySeat(seat);
+
+      if (!toEl) return;
+
+      flyCard({
+        fromEl: monteEl,
+        toEl,
+        imageUrl: "assets/cards/back-01.png",
+        sfx: null,
+        duration: 280,
+        className: "deal-flying-card"
+      });
+    }, index * 100);
+  });
+}
+
+export function renderHand() {
+  const handEl = document.getElementById("hand");
+  handEl.innerHTML = "";
+
+  const player = currentPlayer();
+  if (!player || !Array.isArray(player.hand)) return;
+
+  const isDealing =
+    state.faseTurno === "DEALING" &&
+    Number(state.dealEndsAt || 0) > Date.now();
+
+  if (isDealing) {
+    const total = player.hand.length;
+    const dealMs = Number(state.dealMs) || 2200;
+    const endAt = Number(state.dealEndsAt) || 0;
+
+    const elapsed = Math.max(
+      0,
+      dealMs - Math.max(0, endAt - Date.now())
+    );
+
+    const stepMs =
+      total > 0
+        ? Math.max(70, Math.floor(dealMs / total))
+        : 120;
+
+    const visibleCount = Math.min(
+      total,
+      Math.floor(elapsed / stepMs)
+    );
+
+    // dealEndsAt identifica esta distribuição.
+    // Mudou = começou uma nova distribuição.
+    const dealAnimationKey = String(endAt);
+
+    if (lastDealAnimationKey !== dealAnimationKey) {
+      lastDealAnimationKey = dealAnimationKey;
+      lastDealAnimatedCount = 0;
+    }
+
+    // nova distribuição = reinicia também
+    // o controle visual dos HUDs adversários
+    if (lastDealHudAnimationKey !== dealAnimationKey) {
+      lastDealHudAnimationKey = dealAnimationKey;
+      lastDealHudAnimatedCount = 0;
+    }
+
+    const monteEl = document.getElementById("monte");
+
+    for (let i = 0; i < visibleCount; i++) {
+      const div = document.createElement("div");
+
+      div.className = "card";
+      div.style.backgroundImage = "url('assets/cards/back-01.png')";
+      div.style.opacity = "0.98";
+      div.style.transform = "translateY(-6px)";
+      div.style.transition = "transform 120ms ease";
+
+      handEl.appendChild(div);
+
+      // Esta posição acabou de receber uma carta.
+      // Faz o verso voar do monte até ela.
+      if (
+        i >= lastDealAnimatedCount &&
+        monteEl
+      ) {
+        requestAnimationFrame(() => {
+          flyCard({
+            fromEl: monteEl,
+            toEl: div,
+            imageUrl: "assets/cards/back-01.png",
+            sfx: null,
+            duration: 280,
+            className: "deal-flying-card"
+          });
+        });
+      }
+    }
+
+      // Cada novo "nível" da mão representa mais uma
+      // rodada de distribuição para a mesa inteira.
+      if (visibleCount > lastDealHudAnimatedCount) {
+        for (
+          let round = lastDealHudAnimatedCount + 1;
+          round <= visibleCount;
+          round++
+        ) {
+          animateDealRoundToOtherPlayers(round);
+        }
+
+        lastDealHudAnimatedCount = visibleCount;
+      }
+
+    lastDealAnimatedCount = Math.max(
+      lastDealAnimatedCount,
+      visibleCount
+    );
+
+    return;
+  }
+
+ player.hand.forEach((card, index) => {
+  const div = createCardElement(card, { selectable: true });
+
+  div.style.setProperty(
+    "z-index",
+    String(index + 1),
+    "important"
+  );
+
+  if (state.selectedCards.includes(card.id)) {
+    div.classList.add("selected");
+  }
+
+
+    div.draggable = true;
+    div.dataset.cardId = String(card.id);
+
+    // ===== DESKTOP DRAG =====
+    div.addEventListener("dragstart", (e) => {
+      e.dataTransfer.setData("text/plain", String(card.id));
+
+      // arrastou = entrou em modo manual
+      state.handSort = null;
+    });
+
+    div.addEventListener("dragover", (e) => {
+      e.preventDefault();
+    });
+
+    div.addEventListener("drop", (e) => {
+      e.preventDefault();
+
+      const fromId = e.dataTransfer.getData("text/plain");
+      const toId = div.dataset.cardId;
+
+      if (!fromId || !toId || fromId === toId) return;
+
+      reorderHandByIds(fromId, toId);
+
+      // drag & drop define a nova ordem manual
+      state.handSort = null;
+      state.manualHandOrder = currentPlayer().hand.map(card => String(card.id));
+
+      if (typeof window.renderAll === "function") window.renderAll();
+    });
+
+    // ===== MOBILE TOUCH DRAG =====
+    div.addEventListener("touchstart", (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+
+      const t = e.touches[0];
+
+      clearTouchDragState();
+
+      touchDragState.fromId = String(card.id);
+      touchDragState.fromEl = div;
+      touchDragState.startX = t.clientX;
+      touchDragState.startY = t.clientY;
+
+      // toque longo entra em modo arrastar
+      touchDragState.holdTimer = setTimeout(() => {
+        touchDragState.dragging = true;
+        state.handSort = null;
+        div.classList.add("touch-dragging");
+      }, 180);
+    }, { passive: true });
+
+    div.addEventListener("touchmove", (e) => {
+      if (!e.touches || e.touches.length !== 1) return;
+
+      const t = e.touches[0];
+      const dx = t.clientX - touchDragState.startX;
+      const dy = t.clientY - touchDragState.startY;
+      const dist = Math.hypot(dx, dy);
+
+      // se mexeu antes do toque longo, cancela o drag e deixa rolar/scrollar normal
+      if (!touchDragState.dragging && dist > 10) {
+        if (touchDragState.holdTimer) {
+          clearTimeout(touchDragState.holdTimer);
+          touchDragState.holdTimer = null;
+        }
+        return;
+      }
+
+      if (!touchDragState.dragging) return;
+
+      e.preventDefault();
+
+      if (touchDragState.targetEl) {
+        touchDragState.targetEl.classList.remove("touch-drop-target");
+        touchDragState.targetEl = null;
+        touchDragState.targetId = null;
+      }
+
+      const targetEl = findCardElementFromTouch(t);
+      if (!targetEl) return;
+
+      const toId = targetEl.dataset.cardId;
+      if (!toId || toId === touchDragState.fromId) return;
+
+      touchDragState.targetEl = targetEl;
+      touchDragState.targetId = toId;
+      targetEl.classList.add("touch-drop-target");
+    }, { passive: false });
+
+    div.addEventListener("touchend", (e) => {
+      // se ainda estava esperando toque longo, cancela
+      if (touchDragState.holdTimer) {
+        clearTimeout(touchDragState.holdTimer);
+        touchDragState.holdTimer = null;
+      }
+
+      if (!touchDragState.dragging) {
+        clearTouchDragState();
+        return;
+      }
+
+      const fromId = touchDragState.fromId;
+      const toId = touchDragState.targetId;
+
+      if (fromId && toId && fromId !== toId) {
+        reorderHandByIds(fromId, toId);
+
+        state.handSort = null;
+        state.manualHandOrder = currentPlayer().hand.map(card => String(card.id));
+
+        if (typeof window.renderAll === "function") window.renderAll();
+      }
+
+      clearTouchDragState();
+    }, { passive: true });
+
+    div.addEventListener("touchcancel", clearTouchDragState, { passive: true });
+
+    handEl.appendChild(div);
+  });
+}
+
+export function renderTable() {
+  // Mostrar vencedor da partida
+  if (state.matchEnded && state.matchWinnerSeat) {
+    const winner = state.seats?.[state.matchWinnerSeat - 1];
+
+    if (winner) {
+      showMessage(`🏆 ${winner.name} Vencedor a partida!`);
+    }
+
+    return;
+  }
+
+  const el = document.getElementById("table");
+  if (!el) return;
+
+  el.onclick = () => {
+    if (state.selectedCards.length >= 3) {
+      layDownSelectedSet();
+      renderAll();
+    }
+  };
+
+  el.innerHTML = "";
+
+  const isMobilePortrait =
+    window.matchMedia?.("(max-width: 520px) and (orientation: portrait)")?.matches;
+
+  let mobileMeldsLayer = null;
+
+    if (isMobilePortrait) {
+      mobileMeldsLayer = document.createElement("div");
+      mobileMeldsLayer.className = "table-melds-layer";
+
+      el.appendChild(mobileMeldsLayer);
+    }
+
+  state.table.forEach((jogo, index) => {
+    const group = document.createElement("div");
+    group.className = "grupo-table";
+    group.dataset.meldIndex = String(index);
+
+    jogo.cards.forEach((card, cardIndex) => {
+      const div = document.createElement("div");
+      div.className = "card";
+      div.style.backgroundImage = `url('${getCardImage(card)}')`;
+
+      // ✅ clique no coringa da mesa = tentar substituir pelo carta real selecionada
+      if (card?.isJoker) {
+        div.onclick = (e) => {
+          e.stopPropagation();
+          swapJokerOnTable(index, cardIndex);
+          renderAll();
+        };
+      }
+
+      group.appendChild(div);
+    });
+
+    group.onclick = () => {
+      addCardToTableGame(index);
+      renderAll();
+    };
+
+    if (isMobilePortrait) {
+      mobileMeldsLayer.appendChild(group);
+    } else {
+      el.appendChild(group);
+    }
+  });
+
+  // 👇 BANNER "FULANO BATEU!" sem piscar
+  let banner = document.getElementById("batidaBanner");
+
+  const shouldShowBatidaBanner =
+    !!state.batidaAnnouncement &&
+    Number(state.batidaAnnouncementEndsAt || 0) > Date.now();
+
+  if (!shouldShowBatidaBanner) {
+    if (banner) {
+      banner.remove();
+    }
+
+    if (window.__batidaBannerHideTimer) {
+      clearTimeout(window.__batidaBannerHideTimer);
+      window.__batidaBannerHideTimer = null;
+    }
+  } else {
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "batidaBanner";
+      document.body.appendChild(banner);
+    }
+
+    if (banner.textContent !== state.batidaAnnouncement) {
+      banner.textContent = state.batidaAnnouncement;
+    }
+
+    const msLeft = Math.max(0, Number(state.batidaAnnouncementEndsAt || 0) - Date.now());
+
+    if (window.__batidaBannerHideTimer) {
+      clearTimeout(window.__batidaBannerHideTimer);
+      window.__batidaBannerHideTimer = null;
+    }
+
+    window.__batidaBannerHideTimer = setTimeout(() => {
+      const current = document.getElementById("batidaBanner");
+      if (current) current.remove();
+      window.__batidaBannerHideTimer = null;
+    }, msLeft);
+  }
+
+  // 👇 BANNER DE RODADA (ex: baralho acabou)
+  let roundBanner = document.getElementById("roundBanner");
+
+  const shouldShowRoundBanner =
+    !!state.roundAnnouncement &&
+    Number(state.roundAnnouncementEndsAt || 0) > Date.now();
+
+  if (!shouldShowRoundBanner) {
+    if (roundBanner) {
+      roundBanner.remove();
+    }
+
+    if (window.__roundBannerHideTimer) {
+      clearTimeout(window.__roundBannerHideTimer);
+      window.__roundBannerHideTimer = null;
+    }
+  } else {
+    if (!roundBanner) {
+      roundBanner = document.createElement("div");
+      roundBanner.id = "roundBanner";
+      document.body.appendChild(roundBanner);
+    }
+
+    const isMobileRoundBanner =
+      document.body.classList.contains("mobile-table-mode") ||
+      window.matchMedia?.("(max-width: 520px) and (orientation: portrait)")?.matches;
+
+    let roundText = String(state.roundAnnouncement || "");
+
+    if (isMobileRoundBanner) {
+      roundText = roundText
+        .replace("Embaralhando... Duelo começa em instantes.", "Embaralhando...\nDuelo em instantes")
+        .replace("Rodada sem duelo. Nova rodada em instantes.", "Nova rodada em instantes");
+    }
+
+    if (roundBanner.textContent !== roundText) {
+      roundBanner.textContent = roundText;
+    }
+
+    const msLeft = Math.max(
+      0,
+      Number(state.roundAnnouncementEndsAt || 0) - Date.now()
+    );
+
+    if (window.__roundBannerHideTimer) {
+      clearTimeout(window.__roundBannerHideTimer);
+      window.__roundBannerHideTimer = null;
+    }
+
+    window.__roundBannerHideTimer = setTimeout(() => {
+      const current = document.getElementById("roundBanner");
+      if (current) current.remove();
+      window.__roundBannerHideTimer = null;
+    }, msLeft);
+  }
+
+// =============================
+// CACHETÃO PRO - VIRA / CORINGA / POTE
+// =============================
+const viraCardEl = document.getElementById("vira-card");
+const viraJokerEl = document.getElementById("vira-joker");
+
+const cartaVira =
+  state.room?.cartaVira ||
+  state.cartaVira ||
+  null;
+
+const coringaValor =
+  state.room?.coringaValor ||
+  state.coringaValor ||
+  "";
+
+const coringaNaipes = Array.isArray(state.room?.coringaNaipes)
+  ? state.room.coringaNaipes
+  : (Array.isArray(state.coringaNaipes) ? state.coringaNaipes : []);
+
+if (viraCardEl) {
+  const viraNaMesa =
+    state.room?.viraNaMesa ??
+    state.viraNaMesa ??
+    true;
+
+  const minhaVira =
+    Number(
+      state.room?.viraEmUsoPorSeat ??
+      state.viraEmUsoPorSeat
+    ) === Number(state.mySeat);
+
+  const podeSelecionarVira =
+    !!cartaVira &&
+    viraNaMesa &&
+    minhaVira &&
+    (
+      state.faseTurno === "BAIXAR" ||
+      state.faseTurno === "DESCARTAR"
+    );
+
+  const viraSelecionada = (state.selectedCards || []).some(
+    id => String(id) === "__VIRA__"
+  );
+
+  if (cartaVira && viraNaMesa) {
+    viraCardEl.style.backgroundImage =
+      `url('${getCardImage(cartaVira)}')`;
+
+    viraCardEl.textContent = "";
+    viraCardEl.style.display = "";
+
+    viraCardEl.classList.toggle(
+      "selected",
+      viraSelecionada
+    );
+
+    viraCardEl.classList.toggle(
+      "vira-selectable",
+      podeSelecionarVira
+    );
+
+    viraCardEl.onclick = podeSelecionarVira
+      ? () => toggleSelectVira()
+      : null;
+  } else {
+    viraCardEl.style.backgroundImage = "";
+    viraCardEl.textContent = "—";
+    viraCardEl.classList.remove(
+      "selected",
+      "vira-selectable"
+    );
+    viraCardEl.onclick = null;
+  }
+}
+
+if (viraJokerEl) {
+  const tableType = String(
+    state.room?.tableType ||
+    window.state?.tables?.[state.room?.id]?.tableType ||
+    "RECREATIONAL"
+  ).toUpperCase();
+
+  const naipeSimbolo = {
+    espadas: "♠",
+    paus: "♣",
+    copas: "♥",
+    ouros: "♦"
+  };
+
+  // =====================================================
+  // COMPETIÇÃO — MINI CARTAS REAIS
+  // =====================================================
+  if (
+    tableType === "COMPETITION" &&
+    coringaValor &&
+    coringaNaipes.length >= 2
+  ) {
+    const card1 = {
+      valor: coringaValor,
+      naipe: coringaNaipes[0]
+    };
+
+    const card2 = {
+      valor: coringaValor,
+      naipe: coringaNaipes[1]
+    };
+
+    viraJokerEl.innerHTML = `
+      <span class="joker-mini-label">Coringas:</span>
+
+      <img
+        class="joker-mini-card"
+        src="${getCardImage(card1)}"
+        alt="${coringaValor} ${coringaNaipes[0]}"
+      >
+
+      <img
+        class="joker-mini-card"
+        src="${getCardImage(card2)}"
+        alt="${coringaValor} ${coringaNaipes[1]}"
+      >
+    `;
+
+    return;
+  }
+
+  // =====================================================
+  // RECREATIVO — MANTÉM COMO JÁ É
+  // =====================================================
+  const coringaTexto =
+    coringaValor && coringaNaipes.length >= 2
+      ? `${coringaValor}${naipeSimbolo[coringaNaipes[0]] || coringaNaipes[0]} e ${coringaValor}${naipeSimbolo[coringaNaipes[1]] || coringaNaipes[1]}`
+      : "—";
+
+  viraJokerEl.textContent = `Coringas: ${coringaTexto}`;
+}
+
+  playPendingHandToTableAnimation();
+
+}
+
+let pendingDrawAnimTimer = null;
+
+export function playPendingDrawAnimation() {
+  const fx = state.pendingDeckToHandAnim;
+  if (!fx?.cardId) return;
+
+  const monteEl = document.getElementById("monte");
+  const toEl = document.querySelector(`.card[data-card-id="${String(fx.cardId)}"]`);
+
+  if (!monteEl || !toEl) return;
+
+  const player = currentPlayer?.();
+  const card =
+    Array.isArray(player?.hand)
+      ? player.hand.find(c => String(c.id) === String(fx.cardId))
+      : null;
+
+  if (!card) return;
+
+  clearTimeout(pendingDrawAnimTimer);
+
+  // evita repetir a mesma animação
+  state.pendingDeckToHandAnim = null;
+
+  // pequena espera para garantir layout pronto
+  pendingDrawAnimTimer = setTimeout(() => {
+    flyCard({
+      fromEl: monteEl,
+      toEl,
+      card,
+      sfx: "draw",
+      duration: 400
+    });
+/*
+    toEl.classList.add("pop-in");
+    setTimeout(() => toEl.classList.remove("pop-in"), 220);*/
+  }, 30);
+}
+
+let pendingDiscardAnimTimer = null;
+
+export function playPendingDiscardDrawAnimation() {
+  const fx = state.pendingDiscardToHandAnim;
+  if (!fx?.cardId) return;
+
+  const lixoEl = document.getElementById("lixo");
+  const toEl = document.querySelector(`.card[data-card-id="${String(fx.cardId)}"]`);
+
+  if (!lixoEl || !toEl) return;
+
+  const player = currentPlayer?.();
+  const card =
+    Array.isArray(player?.hand)
+      ? player.hand.find(c => String(c.id) === String(fx.cardId))
+      : null;
+
+  if (!card) return;
+
+  clearTimeout(pendingDiscardAnimTimer);
+
+  // evita repetir
+  state.pendingDiscardToHandAnim = null;
+
+  pendingDiscardAnimTimer = setTimeout(() => {
+    flyCard({
+      fromEl: lixoEl,
+      toEl,
+      card,
+      sfx: "draw",
+      duration: 400
+    });
+/*
+    toEl.classList.add("pop-in");
+    setTimeout(() => toEl.classList.remove("pop-in"), 240);*/
+  }, 30);
+}
+
+
+let pendingHandToTableTimer = null;
+
+export function playPendingHandToTableAnimation() {
+  const fx = state.pendingHandToTableAnim;
+  if (!fx?.cardIds?.length) return;
+
+  clearTimeout(pendingHandToTableTimer);
+
+  const ids = fx.cardIds.map(String);
+  const snapshots = Array.isArray(fx.cardSnapshots) ? fx.cardSnapshots : [];
+  const targetMeldIndex =
+    Number.isInteger(fx.targetMeldIndex) ? fx.targetMeldIndex : null;
+
+  state.pendingHandToTableAnim = null;
+
+  pendingHandToTableTimer = setTimeout(() => {
+    let tableEl = null;
+
+    if (targetMeldIndex != null) {
+      tableEl = document.querySelector(`.grupo-table[data-meld-index="${targetMeldIndex}"]`);
+    }
+
+    if (!tableEl) {
+      tableEl =
+        document.querySelector(".table-melds") ||
+        document.getElementById("tableMelds") ||
+        document.getElementById("table") ||
+        document.getElementById("game");
+    }
+
+    if (!tableEl) return;
+
+    ids.forEach((id, i) => {
+      const snap = snapshots.find(s => String(s.id) === String(id));
+      if (!snap?.rect) return;
+
+      const ghost = document.createElement("div");
+      ghost.className = "card";
+      ghost.style.position = "fixed";
+      ghost.style.left = `${snap.rect.left}px`;
+      ghost.style.top = `${snap.rect.top}px`;
+      ghost.style.width = `${snap.rect.width}px`;
+      ghost.style.height = `${snap.rect.height}px`;
+      ghost.style.pointerEvents = "none";
+      ghost.style.zIndex = "99999";
+      ghost.style.borderRadius = "10px";
+      ghost.style.boxShadow = "0 10px 24px rgba(0,0,0,0.28)";
+      ghost.style.backgroundImage = "url('./assets/cards/back-01.png')";
+      ghost.style.backgroundSize = "cover";
+      ghost.style.backgroundPosition = "center";
+      ghost.style.backgroundRepeat = "no-repeat";
+
+      document.body.appendChild(ghost);
+
+      const targetRect = tableEl.getBoundingClientRect();
+      const dx =
+        (targetRect.left + targetRect.width / 2) -
+        (snap.rect.left + snap.rect.width / 2);
+      const dy =
+        (targetRect.top + targetRect.height / 2) -
+        (snap.rect.top + snap.rect.height / 2);
+
+      ghost.animate(
+        [
+          {
+            transform: "translate(0px, 0px) scale(1)",
+            opacity: 1
+          },
+          {
+            transform: `translate(${dx}px, ${dy}px) scale(0.88)`,
+            opacity: 0.88
+          }
+        ],
+        {
+          duration: 360 + i * 50,
+          easing: "ease-out",
+          fill: "forwards"
+        }
+      );
+
+      setTimeout(() => {
+        ghost.remove();
+      }, 420 + i * 50);
+    });
+  }, 40);
+}
+
+
+export function renderMonte() {
+  const el = document.getElementById("monte");
+  el.style.backgroundImage = "url('./assets/cards/back-01.png')";
+  el.onclick = () => {
+    comprarDoMonte(); // só 1 vez
+    // no online, NÃO precisa renderAll()
+  };
+}
+
+export function renderLixo() {
+  const lixoEl = document.getElementById("lixo");
+  if (!lixoEl) return;
+
+  // ✅ clique do lixo é contextual:
+  // - DESCARTAR: lixo = descartar carta selecionada
+  // - COMPRAR: lixo = pegar do lixo (ou bloqueado)
+  // - BAIXAR + travado do lixo: lixo = devolver e passar
+  lixoEl.onclick = () => {
+    if (state.faseTurno === "DESCARTAR" || state.faseTurno === "BAIXAR") {
+      discardSelectedCard();
+      if (typeof window.renderAll === "function") window.renderAll();
+      return;
+    }
+
+    if (state.faseTurno === "COMPRAR") {
+      onClickLixo(); // pega do lixo
+      if (typeof window.renderAll === "function") window.renderAll();
+      return;
+    }
+
+    // fora desses casos, não faz nada
+  };
+
+  lixoEl.innerHTML = "";
+
+  const topo = state.lixo[state.lixo.length - 1];
+  if (!topo) return;
+
+  const cardEl = createCardElement(topo);
+  lixoEl.appendChild(cardEl);
+  applyAnimIfQueued(cardEl, topo.id);
+
+}
+
+
+
+export function bindTableUI() {
+  if (state.spectator) return;
+  const monteEl = document.getElementById("monte");
+  const lixoEl = document.getElementById("lixo");
+
+  // 🃏 MONTE → SEMPRE COMPRAR
+  monteEl.onclick = () => {
+  console.log("🃏 clique no monte | fase:", state.faseTurno);
+
+  if (state.faseTurno !== "COMPRAR") return;
+
+  // pega referência do topo (monte) antes
+  const fromEl = monteEl;
+
+  // executa compra (estado muda)
+  comprarDoMonte();
+
+  // renderiza para aparecer a carta na mão
+  renderAll();
+
+  // destino: última carta na mão
+  const handEl = document.getElementById("hand");
+  const toEl = handEl?.lastElementChild;
+
+  // anima do monte pra mão
+  const ultimaCarta = currentPlayer().hand[currentPlayer().hand.length - 1];
+  if (toEl && ultimaCarta) {
+    flyCard({ fromEl, toEl, card: ultimaCarta, sfx: "draw", duration: 280 });
+/*
+    toEl.classList.add("pop-in"); // micro “pop”
+    setTimeout(() => toEl.classList.remove("pop-in"), 200);*/
+  }
+
+  };
+
+  // 🗑 LIXO → COMPRA ou DESCARTE, DEPENDENDO DA FASE
+  lixoEl.onclick = () => {
+    console.log("🗑 clique no lixo | fase:", state.faseTurno);
+
+    // 🟢 pegar do lixo
+    if (state.faseTurno === "COMPRAR") {
+      pegarDoLixo();
+      renderAll();
+      return;
+    }
+
+    // 🔴 descartar
+    if (state.faseTurno === "DESCARTAR" || state.faseTurno === "BAIXAR") {
+      discardSelectedCard();
+      renderAll();
+      return;
+    }
+
+    // ⚠️ qualquer outro caso
+    showGameNotice("Ação não permitida");
+  };
+}
+
+function applyAnimIfQueued(el, cardId) {
+  if (!el || !cardId || !Array.isArray(state.animQueue)) return;
+
+  const idx = state.animQueue.findIndex(a => String(a.id) === String(cardId));
+  if (idx === -1) return;
+
+  const kind = state.animQueue[idx].kind;
+  state.animQueue.splice(idx, 1);
+
+  const cls =
+    kind === "discard" ? "anim-discard" :
+    kind === "table" ? "anim-table" :
+    "anim-deal";
+
+  // aplica no "corpo" da carta se existir
+  const target = el.firstElementChild || el;
+  target.classList.add(cls);
+  target.addEventListener("animationend", () => target.classList.remove(cls), { once: true });
+}
+
+
+function getCrazyBatidaUi() {
+  const variant = String(
+    state.room?.variant ||
+    state.variant ||
+    ""
+  ).toUpperCase();
+
+  if (
+    variant !== "CRAZY" &&
+    variant !== "CACHETAO" &&
+    variant !== "CACHETAO_PRO"
+  ) {
+    return {
+      show: false,
+      active: false,
+      mine: false,
+      disabled: true,
+      withVira: false,
+      label: "BATI"
+    };
+  }
+
+  if (state.spectator) {
+    return {
+      show: false,
+      active: false,
+      mine: false,
+      disabled: true,
+      withVira: false,
+      label: "BATI"
+    };
+  }
+
+  const active =
+    !!state.crazyBatidaAttemptActive;
+
+  const claimantSeat =
+    Number(
+      state.crazyBatidaAttemptSeat || 0
+    );
+
+  const attemptUsesVira =
+    !!state.crazyBatidaAttemptUsesVira;
+
+  const prioritySeat =
+    Number(
+      state.crazyBatidaAttemptPrioritySeat || 0
+    );
+
+  const mySeat =
+    Number(state.mySeat || 0);
+
+  const mine =
+    active &&
+    claimantSeat === mySeat;
+
+  const iHavePriority =
+    active &&
+    prioritySeat === mySeat &&
+    claimantSeat !== mySeat;
+
+  const burned =
+    !!state.crazyBatidaBurnedBySeat?.[
+      state.mySeat
+    ];
+
+  const meuPlayer =
+    currentPlayer?.() ||
+    (state.seats || []).find(
+      p =>
+        p &&
+        Number(p.seat) === mySeat
+    ) ||
+    null;
+
+  const viraDisponivelParaBatida =
+    !!(
+      state.viraDisponivelParaJogar ??
+      state.room?.viraDisponivelParaJogar
+    );
+
+  const estaParticipandoDaRodada =
+    !!meuPlayer &&
+    !meuPlayer.eliminated &&
+    !meuPlayer.passouRodada &&
+    (
+      meuPlayer.participando === true ||
+      state.phase === "COMPRAR"
+    );
+
+  const possoBaterComVira =
+    !active &&
+    state.phase === "COMPRAR" &&
+    viraDisponivelParaBatida &&
+    estaParticipandoDaRodada &&
+    !burned;
+
+  if (mine) {
+    return {
+      show: true,
+      active: true,
+      mine: true,
+      disabled: false,
+      withVira: attemptUsesVira,
+      label: "CANCELAR"
+    };
+  }
+
+  // Mesmo com outro tentando, o primeiro comprador
+  // ainda mantém a prioridade.
+  if (iHavePriority) {
+    return {
+      show: true,
+      active: true,
+      mine: false,
+      disabled: false,
+      withVira: attemptUsesVira,
+      label: attemptUsesVira
+        ? "BATI COMA VIRA"
+        : "BATI"
+    };
+  }
+
+  if (active && !mine) {
+    return {
+      show: true,
+      active: true,
+      mine: false,
+      disabled: true,
+      withVira: attemptUsesVira,
+      label: attemptUsesVira
+        ? "BATI COM A VIRA"
+        : "BATI"
+    };
+  }
+
+  if (burned) {
+    return {
+      show: true,
+      active: false,
+      mine: false,
+      disabled: true,
+      withVira: false,
+      label: "QUEIMOU"
+    };
+  }
+
+  if (possoBaterComVira) {
+    return {
+      show: true,
+      active: false,
+      mine: false,
+      disabled: false,
+      withVira: true,
+      label: "BATER VIRA"
+    };
+  }
+
+  return {
+    show: true,
+    active: false,
+    mine: false,
+    disabled: false,
+    withVira: false,
+    label: "BATI"
+  };
+}
+
+export function renderScoreboard() {
+
+  const el = document.getElementById("scoreboard");
+  if (!el) return;
+
+  if (state.spectator) {
+  el.style.display = "";
+  }
+
+  el.style.display = "";
+
+  const pl = currentPlayer();
+  if (!pl) {
+    el.innerHTML = "";
+    return;
+  }
+
+  const nomeBase = pl.name || "Jogador";
+  const nome = pl.disconnected ? `${nomeBase} (Offline)` : nomeBase;
+  const inicial = (nomeBase[0] || "?").toUpperCase();
+  const vidas = typeof pl.vidas === "number" ? pl.vidas : 10;
+  const buyIn = typeof state.room?.buyIn === "number" ? state.room.buyIn : null;
+  const chips = typeof pl.tableChips === "number"
+  ? pl.tableChips
+  : (typeof pl.chips === "number" ? pl.chips : 0);
+
+  const mesaValor = buyIn ? buyIn * 10 : null;
+  const mesaTitulo = mesaValor ? `Mesa: ${mesaValor.toLocaleString("pt-BR")}` : "Mesa: —";
+
+  const ante = typeof state.room?.ante === "number"
+    ? state.room.ante
+    : (buyIn ? Math.ceil(buyIn / 2) : 0);
+
+  const avatarHtml = pl.avatarUrl
+    ? `<img src="${pl.avatarUrl}" alt="avatar">`
+    : `<span>${inicial}</span>`;
+
+  const tempo = typeof state.turnSecondsLeft === "number" ? state.turnSecondsLeft : 0;
+  const dur = typeof state.turnDurationSec === "number" ? state.turnDurationSec : 30;
+
+  // detecta mobile portrait
+  const isMobilePortrait = window.matchMedia("(max-width: 520px) and (orientation: portrait)").matches;
+
+  // mantém estado de “aberto/fechado” no próprio DOM
+  if (isMobilePortrait && el.dataset.open !== "1") el.dataset.open = "0";
+  if (!isMobilePortrait) el.dataset.open = "1"; // fora do mobile: sempre aberto
+
+  const isOpen = el.dataset.open === "1";
+
+  el.classList.toggle("sb-open", isOpen);
+
+ const batiUi = getCrazyBatidaUi();
+
+  const podeDecidirRodada =
+  state.phase === "DECISAO_PARTICIPAR" &&
+  Number(state.currentSeat) === Number(state.mySeat);
+
+  const jaDecidiuRodada =
+  !!pl.participando ||
+  !!pl.passouRodada;
+
+  const estaNaMarra =
+  !!pl.marra ||
+  !!pl.naMarra ||
+  Number(pl.vidas ?? pl.totalPoints ?? 0) === 1;
+
+
+  const podeJogarComVira =
+  !!(
+    state.room?.viraDisponivelParaJogar ??
+    state.viraDisponivelParaJogar
+  ) &&
+  Number(state.mySeat) === Number(
+    state.room?.primeiroCompradorSeat ??
+    state.primeiroCompradorSeat
+  ) &&
+  Number(state.currentSeat) === Number(state.mySeat) &&
+  (
+    state.phase === "COMPRAR" ||
+    state.faseTurno === "COMPRAR"
+  ) &&
+  !state.spectator;
+
+
+el.innerHTML = `
+  <div class="sb-title">
+    <span>${mesaTitulo}</span>
+
+    ${!isMobilePortrait && batiUi.show ? `
+      <button
+        type="button"
+        class="sb-pill sb-bati-btn ${batiUi.mine ? "is-active" : ""} ${batiUi.disabled ? "is-disabled-ui" : ""}"
+        data-disabled-ui="${batiUi.disabled ? "1" : "0"}"
+      >${batiUi.label}</button>
+    ` : ""}
+
+    <span style="display:flex; gap:8px; align-items:center;">
+      <span class="sb-timer" id="sbTimerText">⏱ ${tempo}s</span>
+    </span>
+    </div>
+
+  <div class="sb-turnbar">
+    <div class="sb-turnbar-fill" id="sbTimerBar" style="width:${Math.max(0, Math.min(100, (tempo / dur) * 100))}%"></div>
+  </div>
+
+  <div class="sb-card">
+    <div class="sb-avatar">${avatarHtml}</div>
+
+    <div class="sb-info">
+      <div class="sb-name">${nome}</div>
+
+      <div class="sb-sub sb-sub-desktop">
+        <div class="sb-sub-row">
+          <span class="sb-pill">Fichas: ${chips.toLocaleString("pt-BR")}</span>
+          <span class="sb-pill">Pontos: ${vidas}</span>
+        </div>
+
+        <div class="sb-sub-row">
+          ${state.phase === "DECISAO_PARTICIPAR" && !jaDecidiuRodada ? `
+          ${estaNaMarra ? `
+            <button
+              type="button"
+              class="sb-pill sb-cachetao-marra-btn sb-marra-red ${!podeDecidirRodada ? "is-disabled-ui" : ""}"
+              data-disabled-ui="${podeDecidirRodada ? "0" : "1"}"
+            >MARRA</button>
+          ` : `
+            <button
+              type="button"
+              class="sb-pill sb-cachetao-jogar-btn ${!podeDecidirRodada ? "is-disabled-ui" : ""}"
+              data-disabled-ui="${podeDecidirRodada ? "0" : "1"}"
+            >JOGAR</button>
+
+            <button
+              type="button"
+              class="sb-pill sb-cachetao-correr-btn ${!podeDecidirRodada ? "is-disabled-ui" : ""}"
+              data-disabled-ui="${podeDecidirRodada ? "0" : "1"}"
+            >CORRER</button>
+          `}
+        ` : ""}
+        </div>
+
+        <div class="sb-sub-row">
+          ${!isMobilePortrait && podeJogarComVira ? `
+            <button
+              type="button"
+              class="sb-pill sb-jogar-vira-btn"
+            >
+              JOGAR COM A VIRA
+            </button>
+          ` : ""}
+
+          ${!isMobilePortrait && !podeJogarComVira ? `
+            <span
+              class="sb-pill sb-bati-placeholder"
+              aria-hidden="true"
+            ></span>
+          ` : ""}
+        </div>
+      </div>
+    </div>
+  </div>
+`;
+  // bind do botão (uma vez)
+  if (isMobilePortrait && el.dataset.bound !== "1") {
+    el.dataset.bound = "1";
+
+    el.addEventListener("click", (ev) => {
+      const btn = ev.target.closest?.(".sb-details-btn");
+      if (!btn) return;
+
+      const openNow = el.dataset.open === "1";
+      el.dataset.open = openNow ? "0" : "1";
+      renderScoreboard(); // re-render pra atualizar texto/aria
+      ev.stopPropagation();
+    });
+  }
+
+   function handleBatiButtonClick(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    console.log("[BATI] clique no botão", {
+      mine: batiUi.mine,
+      disabled: batiUi.disabled,
+      label: batiUi.label,
+      mySeat: state.mySeat,
+      currentSeat: state.currentSeat,
+      phase: state.phase,
+      crazyBatidaAttemptActive: state.crazyBatidaAttemptActive,
+      crazyBatidaAttemptSeat: state.crazyBatidaAttemptSeat
+    });
+
+    if (batiUi.mine) {
+      console.log("[BATI] indo cancelar");
+      requestCancelCrazyBatidaAttempt();
+      return;
+    }
+
+    if (batiUi.disabled) {
+      console.log("[BATI] bloqueado no cliente");
+      if (typeof showGameNotice === "function") {
+        showGameNotice("BATI indisponível no momento.");
+      }
+      return;
+    }
+
+    console.log("[BATI] antes de requestStartCrazyBatidaAttempt", {
+      exists: typeof requestStartCrazyBatidaAttempt,
+    });
+
+    try {
+      const ok =
+        batiUi.withVira
+          ? requestStartBatidaComViraAttempt()
+          : requestStartCrazyBatidaAttempt();
+      console.log("[BATI] retorno requestStartCrazyBatidaAttempt", { ok });
+
+      if (!ok && typeof showGameNotice === "function") {
+        showGameNotice("Não foi possível solicitar BATI.");
+      }
+    } catch (err) {
+      console.error("[BATI] erro ao solicitar", err);
+      if (typeof showGameNotice === "function") {
+        showGameNotice("Erro ao solicitar BATI.");
+      }
+    }
+  }
+
+  const batiBtn = el.querySelector(".sb-bati-btn");
+  if (batiBtn) {
+    batiBtn.onclick = handleBatiButtonClick;
+  }
+
+  const jogarViraBtn =
+    el.querySelector(".sb-jogar-vira-btn");
+
+  if (jogarViraBtn) {
+    jogarViraBtn.onclick = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      if (!podeJogarComVira) {
+        showGameNotice?.(
+          "A opção de jogar com a vira não está disponível."
+        );
+        return;
+      }
+
+      jogarComAVira();
+    };
+  }
+
+  const mobileBatiBtn = el.querySelector(".sb-mobile-bati-btn");
+
+  if (mobileBatiBtn) {
+    mobileBatiBtn.onclick = handleBatiButtonClick;
+
+    if (isMobilePortrait) {
+      const deckArea = document.getElementById("deck-area");
+
+      if (deckArea) {
+
+        // 🔥 remove qualquer botão antigo já movido
+        const old = deckArea.querySelector(".sb-mobile-bati-btn");
+        if (old && old !== mobileBatiBtn) {
+          old.remove();
+        }
+
+        // 🔥 move o atual
+        if (mobileBatiBtn.parentElement !== deckArea) {
+          deckArea.appendChild(mobileBatiBtn);
+        }
+      }
+    }
+  }
+
+const jogarBtn = el.querySelector(".sb-cachetao-jogar-btn");
+
+if (jogarBtn) {
+  jogarBtn.onclick = (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    if (!podeDecidirRodada) {
+      showGameNotice?.("Aguarde sua vez de decidir.");
+      return;
+    }
+
+    window.wsSendAction({
+      type: "jogarRodada"
+    });
+  };
+}
+
+const marraBtn = el.querySelector(".sb-cachetao-marra-btn");
+
+if (marraBtn) {
+  marraBtn.onclick = (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    if (!podeDecidirRodada) {
+      showGameNotice?.("Aguarde sua vez de decidir.");
+      return;
+    }
+
+    window.wsSendAction({
+      type: "marraRodada"
+    });
+  };
+}
+
+const correrBtn = el.querySelector(".sb-cachetao-correr-btn");
+
+if (correrBtn) {
+  correrBtn.onclick = (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+
+    if (!podeDecidirRodada) {
+      showGameNotice?.("Aguarde sua vez de decidir.");
+      return;
+    }
+
+    window.wsSendAction({
+      type: "correrRodada"
+    });
+  };
+}
+
+  // =========================================================
+  // DOUBLE TAP NA MESA (MOBILE)
+  // =========================================================
+  if (isMobilePortrait && !window.__batiDoubleTapBound) {
+    window.__batiDoubleTapBound = true;
+
+    let lastTapAt = 0;
+
+    document.addEventListener("touchstart", (ev) => {
+      const now = Date.now();
+
+      const delta = now - lastTapAt;
+      lastTapAt = now;
+
+      // intervalo de double tap (ajustável)
+      if (delta > 350) return;
+
+      // evita clicar em botões / UI
+      const target = ev.target;
+      if (
+        target.closest?.("#scoreboard") ||
+        target.closest?.(".sb-mobile-bati-btn") ||
+        target.closest?.(".sb-bati-btn") ||
+        target.closest?.("button")
+      ) {
+        return;
+      }
+
+      // garante que temos estado válido
+      if (!state || state.spectator) return;
+
+      const variant = String(state.room?.variant || "").toUpperCase();
+      if (variant !== "CRAZY") return;
+
+      const batiUi = getCrazyBatidaUi();
+
+      console.log("[BATI] double tap detectado", {
+        mine: batiUi.mine,
+        disabled: batiUi.disabled,
+        label: batiUi.label
+      });
+
+      // mesma lógica do botão
+      if (batiUi.mine) {
+        requestCancelCrazyBatidaAttempt();
+        return;
+      }
+
+      if (batiUi.disabled) {
+        if (typeof showGameNotice === "function") {
+          showGameNotice("BATI indisponível.");
+        }
+        return;
+      }
+
+      requestStartCrazyBatidaAttempt();
+    }, { passive: true });
+  }
+  renderMobileTableLayout();
+  renderDesktopTableLayout();
+  moveMobileBatiButtonToBottomArea();
+}
+
+
+
+function isMobilePortraitTable() {
+  return window.matchMedia("(max-width: 768px) and (orientation: portrait)").matches;
+}
+
+function isMobileLandscapeTable() {
+  return window.matchMedia(
+    "(max-width: 900px) and (orientation: landscape)"
+  ).matches;
+}
+
+const mobilePortraitMediaQuery = window.matchMedia(
+  "(max-width: 768px) and (orientation: portrait)"
+);
+
+mobilePortraitMediaQuery.addEventListener("change", () => {
+  renderAll();
+});
+
+function getPublicStateSafe() {
+  return window.state_public || window.state || state || {};
+}
+
+function getPlayersForMobileTable() {
+  const s = getPublicStateSafe();
+
+  const tableId = s.tableId || state.tableId;
+
+  const tableData =
+    tableId && window.state?.tables
+      ? window.state.tables[tableId]
+      : null;
+
+  if (Array.isArray(tableData?.seats)) {
+    return tableData.seats.filter(Boolean);
+  }
+
+  return s.players || s.seats || [];
+}
+
+
+
+
+function getMobileTurnTimerInfo(s = getPublicStateSafe()) {
+  const endsAt = Number(s.turnEndsAt || state.turnEndsAt || 0);
+
+  const totalMs = Number(
+    s.turnMs ||
+    state.turnMs ||
+    state.turnDurationSec * 1000 ||
+    30000
+  );
+
+  const remainingMs = Math.max(0, endsAt - Date.now());
+
+  const pct = totalMs > 0
+    ? Math.max(0, Math.min(100, (remainingMs / totalMs) * 100))
+    : 0;
+
+  return {
+    pct,
+    remainingSec: Math.ceil(remainingMs / 1000),
+    show: endsAt > 0 && totalMs > 0 && Number(s.currentSeat) > 0
+  };
+}
+
+function updateMobileTurnBars() {
+  const info = getMobileTurnTimerInfo();
+
+  document.querySelectorAll("[data-mobile-turnbar-fill]").forEach(el => {
+    el.style.width = `${info.pct}%`;
+  });
+
+  document.querySelectorAll("[data-mobile-turnbar-text]").forEach(el => {
+    el.textContent = `${info.remainingSec}s`;
+  });
+}
+
+function ensureMobileTurnBarTicker() {
+  if (window.__mobileTurnBarTicker) return;
+
+  window.__mobileTurnBarTicker = setInterval(() => {
+    if (!isMobilePortraitTable()) return;
+    updateMobileTurnBars();
+  }, 200);
+}
+
+
+
+function renderMobileTableLayout() {
+  const s = getPublicStateSafe();
+
+  const gameScreen =
+    document.getElementById("gameScreen") ||
+    document.querySelector("#game");
+
+  if (!gameScreen) return;
+
+  let root = document.getElementById("mobileTableLayout");
+
+  if (!isMobilePortraitTable()) {
+    if (root) root.remove();
+    document.body.classList.remove("mobile-table-mode");
+    return;
+  }
+
+  document.body.classList.add("mobile-table-mode");
+
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "mobileTableLayout";
+    root.innerHTML = `
+      <div class="mobile-table-topbar">
+        <span id="mobileMesaInfo"></span>
+        <span id="mobileAnteInfo"></span>
+      </div>
+
+      <div id="mobileViraBox">
+        <div id="mobileViraCard"></div>
+        <div id="mobileViraJoker">Coringas: —</div>
+      </div>
+
+      <div id="mobileDeckBox"></div>
+
+      <div id="mobileActionButtons">
+        <button id="mobileBatiBtn" type="button">BATI</button>
+
+        <button
+          id="mobileJogarViraBtn"
+          type="button"
+          style="display:none;"
+        >
+          JOGAR VIRA
+        </button>
+
+        <button id="mobileJogarBtn" type="button">JOGAR</button>
+        <button id="mobileCorrerBtn" type="button">CORRER</button>
+      </div>
+
+      <div class="mobile-seat-layer">
+        <div class="mobile-seat pos1" data-seat-pos="1"></div>
+        <div class="mobile-seat pos2" data-seat-pos="2"></div>
+        <div class="mobile-seat pos3" data-seat-pos="3"></div>
+        <div class="mobile-seat pos4" data-seat-pos="4"></div>
+        <div class="mobile-seat pos5" data-seat-pos="5"></div>
+        <div class="mobile-seat pos6" data-seat-pos="6"></div>
+        <div class="mobile-seat pos7" data-seat-pos="7"></div>
+        <div class="mobile-seat pos8" data-seat-pos="8"></div>
+        <div class="mobile-seat pos9" data-seat-pos="9"></div>
+        <div class="mobile-seat pos10" data-seat-pos="10"></div>
+    </div>
+    `;
+
+    gameScreen.prepend(root);
+  }
+
+  // ==============================
+  // DADOS DA MESA (CORRETO)
+  // ==============================
+  const tableId = s.tableId;
+  const tableData = tableId && window.state?.tables
+    ? window.state.tables[tableId]
+    : null;
+
+  const buyInBase = Number(
+  tableData?.buyIn ??
+  s.room?.buyIn ??
+  s.buyIn ??
+  1000
+);
+
+// VALOR REAL DA MESA
+const mesaValor = Number(
+  tableData?.stake ??
+  tableData?.mesaValor ??
+  tableData?.tableValue ??
+  (buyInBase * 10)
+);
+
+// ANTE = 5% DO VALOR DA MESA
+const miniAnte = Number(
+  tableData?.miniAnte ??
+  tableData?.ante ??
+  Math.floor(mesaValor * 0.05)
+);
+
+  const mesaEl = document.getElementById("mobileMesaInfo");
+  const anteEl = document.getElementById("mobileAnteInfo");
+
+  if (mesaEl) mesaEl.textContent = `Mesa: ${mesaValor.toLocaleString("pt-BR")}`;
+  if (anteEl) anteEl.remove();
+
+  // ==============================
+  // JOGADORES (SEM VOCÊ)
+  // ==============================
+  const players = getPlayersForMobileTable();
+
+  const mySeat = s.mySeat;
+  const timerInfo = getMobileTurnTimerInfo(s);
+  ensureMobileTurnBarTicker();
+
+    for (let seat = 1; seat <= 10; seat++) {
+    const el = root.querySelector(`[data-seat-pos="${seat}"]`);
+    const p = players.find(player => Number(player?.seat) === seat);
+    console.log("[MOBILE SEAT]", seat, p);
+
+    if (!el) continue;
+
+    const seatOcupado =
+      p &&
+      (
+        p.name ||
+        p.userId ||
+        p.id ||
+        p.avatarUrl ||
+        p.avatar_url
+      );
+
+    if (!seatOcupado) {
+      el.innerHTML = "";
+      el.style.setProperty("display", "none", "important");
+      el.classList.add("empty");
+      el.classList.remove("is-current-turn");
+      continue;
+    }
+
+    el.style.setProperty("display", "flex", "important");
+
+
+    el.classList.remove("empty");
+    el.classList.toggle("is-current-turn", Number(s.currentSeat) === Number(p.seat));
+
+    const avatar =
+      p.avatarUrl ||
+      p.avatar_url ||
+      "/assets/avatar-default.png";
+
+    const chips = Number(p.tableChips ?? p.stack ?? 0);
+    const pts = Number(p.totalPoints ?? 0);
+    const isOffline = !!p.disconnected;
+
+    const handCount = Number(p.handCount ?? 0);
+    const isCurrentTurn = Number(s.currentSeat) === Number(p.seat);
+    const isDealer = Number(s.dealerSeat) === Number(p.seat);
+
+      el.innerHTML = `
+        ${isCurrentTurn && timerInfo.show ? `
+          <div class="mobile-seat-timebar">
+            <div class="mobile-seat-timebar-fill" data-mobile-turnbar-fill style="width:${timerInfo.pct}%"></div>
+          </div>
+        ` : ""}
+        ${handCount > 0 ? `
+          <div class="mobile-seat-cards">
+            ${Array.from({ length: Math.min(handCount, 9) }).map(() => `
+              <div class="mobile-mini-card"></div>
+            `).join("")}
+          </div>
+        ` : ""}
+
+        <div class="mobile-seat-avatar">
+          <img src="${avatar}">
+
+          ${isDealer ? `
+            <span
+              class="dealer-chip dealer-chip-mobile"
+              aria-label="Carteador"
+            >
+              D
+            </span>
+          ` : ""}
+        </div>
+
+        <div>
+          <div class="mobile-seat-name">
+            ${p.name || "Jogador"}
+
+            ${isOffline ? `
+              <span class="mobile-seat-offline">OFF</span>
+            ` : ""}
+
+          </div>
+          <div class="mobile-seat-meta">${chips} · ${pts} pts</div>
+          ${(
+          !!p.marra ||
+          !!p.naMarra ||
+          Number(p.vidas ?? p.totalPoints ?? 0) === 1
+        ) ? `
+          <div class="mobile-seat-marra">MARRA</div>
+        ` : ""}
+        </div>
+      `;
+        }
+
+
+      const mobileViraCard = document.getElementById("mobileViraCard");
+      const mobileViraJoker = document.getElementById("mobileViraJoker");
+
+      const cartaVira = s.cartaVira || window.state?.cartaVira || null;
+      const coringaValor = s.coringaValor || window.state?.coringaValor || "";
+      const coringaNaipes = Array.isArray(s.coringaNaipes)
+        ? s.coringaNaipes
+        : (Array.isArray(window.state?.coringaNaipes) ? window.state.coringaNaipes : []);
+
+      if (mobileViraCard) {
+        mobileViraCard.style.backgroundImage = cartaVira
+          ? `url('${getCardImage(cartaVira)}')`
+          : "";
+      }
+
+    const viraNaMesa =
+        window.state?.viraNaMesa ??
+        s.viraNaMesa ??
+        s.room?.viraNaMesa ??
+        true;
+
+      const viraEmUsoPorSeatMobile =
+        Number(
+          window.state?.viraEmUsoPorSeat ??
+          s.viraEmUsoPorSeat ??
+          s.room?.viraEmUsoPorSeat ??
+          0
+        );
+
+      const meuSeatViraMobile =
+        Number(
+          window.state?.mySeat ??
+          s.mySeat ??
+          0
+        );
+
+      const faseViraMobile =
+        window.state?.phase ??
+        window.state?.faseTurno ??
+        s.phase ??
+        s.faseTurno ??
+        "";
+
+      const minhaVira =
+        viraEmUsoPorSeatMobile === meuSeatViraMobile;
+
+      const podeSelecionarVira =
+        !!cartaVira &&
+        viraNaMesa &&
+        minhaVira &&
+        (
+          faseViraMobile === "BAIXAR" ||
+          faseViraMobile === "DESCARTAR"
+        );
+
+      const viraSelecionada = (
+        window.state?.selectedCards ??
+        s.selectedCards ??
+        []
+      ).some(
+        id => String(id) === "__VIRA__"
+      );
+
+    if (mobileViraCard) {
+  mobileViraCard.style.display =
+    cartaVira && viraNaMesa ? "block" : "none";
+
+  mobileViraCard.classList.toggle(
+    "selected",
+    viraSelecionada
+  );
+
+  mobileViraCard.classList.toggle(
+    "vira-selectable",
+    podeSelecionarVira
+  );
+
+  // Garante que a vira fique acima dos elementos da mesa
+  // e receba toque/clique no mobile.
+  mobileViraCard.style.position = "relative";
+  mobileViraCard.style.zIndex = "300";
+  mobileViraCard.style.pointerEvents =
+    podeSelecionarVira ? "auto" : "none";
+
+  mobileViraCard.style.cursor =
+    podeSelecionarVira ? "pointer" : "default";
+
+  mobileViraCard.onclick = null;
+  mobileViraCard.ontouchend = null;
+
+  if (podeSelecionarVira) {
+    const selecionarViraMobile = (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      toggleSelectVira();
+    };
+
+    mobileViraCard.onclick =
+      selecionarViraMobile;
+
+    mobileViraCard.ontouchend =
+      selecionarViraMobile;
+  }
+}
+
+    const podeJogarComVira =
+      !!cartaVira &&
+      (
+        s.viraDisponivelParaJogar ??
+        s.room?.viraDisponivelParaJogar
+      ) &&
+      Number(s.mySeat) === Number(
+        s.primeiroCompradorSeat ??
+        s.room?.primeiroCompradorSeat
+      ) &&
+      Number(s.mySeat) === Number(s.currentSeat) &&
+      s.faseTurno === "COMPRAR" &&
+      !s.spectator;
+
+        if (mobileViraJoker) {
+          const tableType = String(
+            s.room?.tableType ||
+            tableData?.tableType ||
+            window.state?.tables?.[tableId]?.tableType ||
+            "RECREATIONAL"
+          ).toUpperCase();
+
+          const naipeSimbolo = {
+            espadas: "♠",
+            paus: "♣",
+            copas: "♥",
+            ouros: "♦"
+          };
+
+          // =====================================================
+          // COMPETIÇÃO — MINI CARTAS REAIS
+          // =====================================================
+          if (
+            tableType === "COMPETITION" &&
+            coringaValor &&
+            coringaNaipes.length >= 2
+          ) {
+            const card1 = {
+              valor: coringaValor,
+              naipe: coringaNaipes[0]
+            };
+
+            const card2 = {
+              valor: coringaValor,
+              naipe: coringaNaipes[1]
+            };
+
+            mobileViraJoker.innerHTML = `
+              <div class="mobile-joker-mini-label">
+                Coringas
+              </div>
+
+              <div class="mobile-joker-mini-cards">
+                <img
+                  class="mobile-joker-mini-card"
+                  src="${getCardImage(card1)}"
+                  alt="${coringaValor} ${coringaNaipes[0]}"
+                >
+
+                <img
+                  class="mobile-joker-mini-card"
+                  src="${getCardImage(card2)}"
+                  alt="${coringaValor} ${coringaNaipes[1]}"
+                >
+              </div>
+            `;
+          }
+
+          // =====================================================
+          // RECREATIVO — MANTÉM COMO ESTÁ
+          // =====================================================
+          else {
+            const texto =
+              coringaValor && coringaNaipes.length >= 2
+                ? `Coringas: ${coringaValor}${naipeSimbolo[coringaNaipes[0]] || coringaNaipes[0]} e ${coringaValor}${naipeSimbolo[coringaNaipes[1]] || coringaNaipes[1]}`
+                : "Coringas: —";
+
+            mobileViraJoker.textContent = texto;
+          }
+        }
+
+      const mobileDeckBox = document.getElementById("mobileDeckBox");
+
+      const monte = document.getElementById("monte");
+      const lixo = document.getElementById("lixo");
+      const potArea = document.getElementById("pot-area");
+
+      const viraArea = document.getElementById("vira-area");
+      const viraJoker = document.getElementById("vira-joker");
+
+      if (mobileDeckBox && monte && lixo) {
+
+        if (!mobileDeckBox.contains(monte)) {
+          mobileDeckBox.appendChild(monte);
+        }
+
+        if (!mobileDeckBox.contains(lixo)) {
+          mobileDeckBox.appendChild(lixo);
+        }
+
+        const tableTypeMobile = String(
+          s.room?.tableType ||
+          tableData?.tableType ||
+          "RECREATIONAL"
+        ).toUpperCase();
+
+        if (potArea && root) {
+
+          // O pote/premiação fica fora do conjunto MONTE + VIRA + LIXO
+          if (potArea.parentElement !== root) {
+            root.appendChild(potArea);
+          }
+
+          if (tableTypeMobile === "COMPETITION") {
+            potArea.classList.add("mobile-competition-prize");
+            potArea.classList.remove("mobile-recreational-pot");
+          } else {
+            potArea.classList.remove("mobile-competition-prize");
+            potArea.classList.add("mobile-recreational-pot");
+          }
+        }
+
+        if (mobileDeckBox && mobileViraCard) {
+          if (!mobileDeckBox.contains(mobileViraCard)) {
+            mobileDeckBox.appendChild(mobileViraCard);
+          }
+        }
+      }
+
+      if (viraArea) {
+        viraArea.remove();
+      }
+
+      if (viraJoker) {
+        viraJoker.remove();
+      }
+
+
+      const mobileBatiBtn =
+        document.getElementById("mobileBatiBtn");
+
+      const mobileJogarViraBtn =
+        document.getElementById("mobileJogarViraBtn");
+
+      const mobileJogarBtn =
+        document.getElementById("mobileJogarBtn");
+
+      const mobileCorrerBtn =
+        document.getElementById("mobileCorrerBtn");
+
+      const podeDecidirRodada =
+        s.phase === "DECISAO_PARTICIPAR" &&
+        Number(s.currentSeat) === Number(s.mySeat);
+
+      const meuPlayerMobile =
+        (s.seats || []).find(p => p && Number(p.seat) === Number(s.mySeat)) || null;
+
+      const estaNaMarraMobile =
+        !!meuPlayerMobile?.marra ||
+        !!meuPlayerMobile?.naMarra ||
+        Number(meuPlayerMobile?.vidas ?? meuPlayerMobile?.totalPoints ?? 0) === 1;
+
+      const faseMobile =
+      window.state?.phase ??
+      s.phase ??
+      "";
+
+    const meuSeatMobile =
+      Number(
+        window.state?.mySeat ??
+        s.mySeat
+      );
+
+    const turnoSeatMobile =
+      Number(
+        window.state?.currentSeat ??
+        s.currentSeat
+      );
+
+    const primeiroCompradorMobile =
+      Number(
+        window.state?.primeiroCompradorSeat ??
+        s.primeiroCompradorSeat ??
+        s.room?.primeiroCompradorSeat
+      );
+
+    const viraDisponivelMobile =
+      !!(
+        window.state?.viraDisponivelParaJogar ??
+        s.viraDisponivelParaJogar ??
+        s.room?.viraDisponivelParaJogar
+      );
+
+    const podeJogarComViraMobile =
+      viraDisponivelMobile &&
+      primeiroCompradorMobile === meuSeatMobile &&
+      turnoSeatMobile === meuSeatMobile &&
+      faseMobile === "COMPRAR" &&
+      !(
+        window.state?.spectator ??
+        s.spectator
+      );
+
+        const batiUi = getCrazyBatidaUi();
+/*
+        if (mobileBatiBtn) {
+          mobileBatiBtn.textContent =
+          batiUi.label === "BATI C/ VIRA"
+            ? "BATI VIRA"
+            : (batiUi.label || "BATI");
+          mobileBatiBtn.disabled = !!batiUi.disabled;
+
+          mobileBatiBtn.classList.toggle("is-active", !!batiUi.mine);
+          mobileBatiBtn.classList.toggle("is-disabled-ui", !!batiUi.disabled);
+          mobileBatiBtn.classList.toggle("is-burned", batiUi.label === "QUEIMOU");
+        }
+*/
+        if (mobileBatiBtn) {
+          const batiUi = getCrazyBatidaUi();
+
+          mobileBatiBtn.textContent =
+          batiUi.label === "BATI C/ VIRA"
+            ? "BATI VIRA"
+            : (batiUi.label || "BATI");
+          mobileBatiBtn.disabled = !!batiUi.disabled;
+
+          mobileBatiBtn.classList.toggle("is-active", batiUi.label === "CANCELAR");
+          mobileBatiBtn.classList.toggle("is-burned", batiUi.label === "QUEIMOU");
+          mobileBatiBtn.classList.toggle("is-disabled-ui", !!batiUi.disabled);
+
+          mobileBatiBtn.onclick = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+
+            const atual = getCrazyBatidaUi();
+
+            if (atual.mine) {
+              requestCancelCrazyBatidaAttempt();
+              return;
+            }
+
+            if (atual.disabled) {
+              showGameNotice?.(
+                atual.label === "QUEIMOU"
+                  ? "Você queimou. Agora só pode comprar do monte."
+                  : "BATI indisponível."
+              );
+              return;
+            }
+
+            if (atual.withVira) {
+              requestStartBatidaComViraAttempt();
+            } else {
+              requestStartCrazyBatidaAttempt();
+            }
+          };
+        }
+
+      if (mobileJogarViraBtn) {
+        mobileJogarViraBtn.textContent = "JOGAR VIRA";
+        mobileJogarViraBtn.style.display =
+        podeJogarComViraMobile ? "inline-flex" : "none";
+
+        mobileJogarViraBtn.disabled =
+          !podeJogarComViraMobile;
+
+        mobileJogarViraBtn.onclick = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          if (!podeJogarComViraMobile) {
+            showGameNotice?.(
+              "A opção de jogar com a vira não está disponível."
+            );
+            return;
+          }
+
+          jogarComAVira();
+        };
+      }
+
+
+      if (mobileJogarBtn) {
+        mobileJogarBtn.style.display =
+          faseMobile === "DECISAO_PARTICIPAR"
+            ? ""
+            : "none";
+
+        mobileJogarBtn.textContent =
+          estaNaMarraMobile
+            ? "MARRA"
+            : "JOGAR";
+
+        mobileJogarBtn.disabled =
+          !podeDecidirRodada;
+        mobileJogarBtn.classList.toggle("is-marra", estaNaMarraMobile);
+        mobileJogarBtn.onclick = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          if (!podeDecidirRodada) {
+            showGameNotice?.("Aguarde sua vez de decidir.");
+            return;
+          }
+
+          window.wsSendAction({ type: estaNaMarraMobile ? "marraRodada" : "jogarRodada" });
+        };
+      }
+
+      if (mobileCorrerBtn) {
+        mobileCorrerBtn.style.display =
+          faseMobile === "DECISAO_PARTICIPAR" &&
+          !estaNaMarraMobile
+            ? ""
+            : "none";
+
+        mobileCorrerBtn.disabled =
+          !podeDecidirRodada;
+        mobileCorrerBtn.onclick = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+
+          if (!podeDecidirRodada) {
+            showGameNotice?.("Aguarde sua vez de decidir.");
+            return;
+          }
+
+          window.wsSendAction({ type: "correrRodada" });
+        };
+      }
+  moveMobilePotToTableTop();
+}
+
+function renderDesktopTableLayout() {
+  const s = getPublicStateSafe();
+
+  const game = document.getElementById("game");
+  if (!game) return;
+
+  let root = document.getElementById("desktopTableLayout");
+
+  const isMobile = isMobilePortraitTable();
+
+  if (isMobile) {
+    if (root) root.remove();
+    document.body.classList.remove("desktop-table-mode");
+    return;
+  }
+
+  document.body.classList.add("desktop-table-mode");
+
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "desktopTableLayout";
+    root.innerHTML = `
+      <div class="desktop-seat-layer">
+        <div class="desktop-seat pos1" data-seat-pos="1"></div>
+        <div class="desktop-seat pos2" data-seat-pos="2"></div>
+        <div class="desktop-seat pos3" data-seat-pos="3"></div>
+        <div class="desktop-seat pos4" data-seat-pos="4"></div>
+        <div class="desktop-seat pos5" data-seat-pos="5"></div>
+        <div class="desktop-seat pos6" data-seat-pos="6"></div>
+        <div class="desktop-seat pos7" data-seat-pos="7"></div>
+        <div class="desktop-seat pos8" data-seat-pos="8"></div>
+        <div class="desktop-seat pos9" data-seat-pos="9"></div>
+        <div class="desktop-seat pos10" data-seat-pos="10"></div>
+      </div>
+    `;
+    game.prepend(root);
+  }
+
+  const tableId = s.tableId || state.tableId;
+  const tableData = tableId && window.state?.tables
+    ? window.state.tables[tableId]
+    : null;
+
+  const players = Array.isArray(tableData?.seats)
+    ? tableData.seats.filter(Boolean)
+    : (Array.isArray(state.players) ? state.players : []);
+
+  for (let seat = 1; seat <= 10; seat++) {
+    const el = root.querySelector(`[data-seat-pos="${seat}"]`);
+    const p = players.find(player => Number(player?.seat) === seat);
+
+    if (!el) continue;
+
+    if (!p) {
+      el.innerHTML = "";
+      el.classList.add("empty");
+      el.classList.remove("is-current-turn");
+      continue;
+    }
+
+    el.classList.remove("empty");
+    el.classList.toggle("is-current-turn", Number(s.currentSeat) === Number(p.seat));
+
+    const avatar =
+      p.avatarUrl ||
+      p.avatar_url ||
+      "/assets/avatars/avatar-01.png";
+
+    const chips = Number(p.tableChips ?? p.stack ?? p.chips ?? 0);
+    const pts = Number(p.totalPoints ?? 0);
+
+    const isMe = Number(p.seat) === Number(s.mySeat);
+
+    const isDealer =
+    Number(s.dealerSeat) === Number(p.seat);
+
+    const handCount = Number(
+    p.handCount ??
+    p.cardsCount ??
+    p.handLength ??
+    p.cardCount ??
+    (Array.isArray(p.hand) ? p.hand.length : 0)
+  );
+
+    el.innerHTML = `
+      <div class="desktop-seat-avatar">
+        <img src="${avatar}">
+
+        ${isDealer ? `
+          <span
+            class="dealer-chip dealer-chip-desktop"
+            title="Carteador"
+            aria-label="Carteador"
+          >
+            D
+          </span>
+        ` : ""}
+      </div>
+
+      <div class="desktop-seat-info">
+        <div class="desktop-seat-name">
+        ${p.name || "Jogador"}
+      </div>
+
+      ${p.disconnected ? `
+        <div class="desktop-offline">
+          OFF
+        </div>
+      ` : ""}
+
+            ${(
+          !!p.marra ||
+          !!p.naMarra ||
+          Number(p.vidas ?? p.totalPoints ?? 0) === 1
+        ) ? `
+          <div class="desktop-marra">
+            MARRA
+          </div>
+      ` : ""}
+        <div class="desktop-seat-meta">${chips.toLocaleString("pt-BR")} · ${pts} pts</div>
+
+        ${!isMe && handCount > 0 ? `
+        <div class="desktop-seat-cards">
+          ${Array.from({ length: Math.min(handCount, 9) }).map(() => `
+            <div class="mini-card"></div>
+          `).join("")}
+        </div>
+      ` : ""}
+      </div>
+    `;
+  }
+}
+
+
+
+function moveMobilePotToTableTop() {
+  if (!isMobilePortraitTable()) return;
+
+  const root = document.getElementById("mobileTableLayout");
+  const deckArea = document.getElementById("deck-area");
+  if (!root || !deckArea) return;
+
+  let holder = document.getElementById("mobilePotTop");
+
+  if (!holder) {
+    holder = document.createElement("div");
+    holder.id = "mobilePotTop";
+    root.appendChild(holder);
+  }
+
+  const potItems = Array.from(deckArea.children).filter(el => {
+    if (!el) return false;
+
+    if (el.id === "monte") return false;
+    if (el.id === "lixo") return false;
+    if (el.id === "mobileBottomHud") return false;
+    if (el.classList?.contains("sb-mobile-bati-btn")) return false;
+    if (el.classList?.contains("sort-btn")) return false;
+
+    const txt = String(el.textContent || "").toLowerCase();
+    const cls = String(el.className || "").toLowerCase();
+    const id = String(el.id || "").toLowerCase();
+
+    return (
+      txt.includes("pote") ||
+      cls.includes("pot") ||
+      cls.includes("pote") ||
+      cls.includes("chip") ||
+      id.includes("pot") ||
+      id.includes("pote") ||
+      id.includes("chip")
+    );
+  });
+
+  potItems.forEach(el => holder.appendChild(el));
+}
+
+
+
+function moveMobileBatiButtonToBottomArea() {
+  if (!isMobilePortraitTable()) return;
+
+  const bottomArea = document.getElementById("bottomArea") || document.body;
+  const btn = document.querySelector(".sb-mobile-bati-btn");
+
+  if (!btn) return;
+
+  if (!btn.closest("#bottomArea")) {
+    bottomArea.appendChild(btn);
+  }
+
+  btn.id = "mobileBatiBtnHud";
+}
+
+// expõe para actions.js sem import (evita ciclo)
+window.__flyCard = flyCard;
+
+// =============================
+// 💰 POTE NA MESA (FICHAS)
+// =============================
+export function renderPot() {
+  const gameRoot = document.getElementById("game");
+
+  // pega SEMPRE o lixo que está dentro do #game (evita pegar lixo de outra tela)
+  const lixoEl =
+    gameRoot?.querySelector("#lixo") ||
+    document.querySelector("#game #lixo") ||
+    document.getElementById("lixo");
+
+  if (!lixoEl) return;
+
+  // ✅ remove potes duplicados que possam ter ficado no DOM
+  // (mantém só 1)
+  const allPots = Array.from(document.querySelectorAll("#game .pot-area, #game #pot-area, .pot-area#pot-area"));
+  for (let i = 1; i < allPots.length; i++) allPots[i].remove();
+
+  // garante que existe exatamente 1 potEl
+  let potEl = document.getElementById("pot-area");
+  if (!potEl) {
+    potEl = document.createElement("div");
+    potEl.id = "pot-area";
+    potEl.className = "pot-area";
+  }
+
+  // ✅ garante que ele está colado no lixo CERTO (o do game)
+  // se estiver em outro lugar, move
+  if (potEl.previousElementSibling !== lixoEl) {
+    potEl.remove(); // remove de onde estiver
+    lixoEl.insertAdjacentElement("afterend", potEl);
+  }
+
+  const tableId = state.room?.id;
+
+  const liveTable =
+    tableId && window.state?.tables
+      ? window.state.tables[tableId]
+      : null;
+
+  const tableType = String(
+    state.room?.tableType ||
+    liveTable?.tableType ||
+    "RECREATIONAL"
+  ).toUpperCase();
+
+
+  // =====================================================
+  // COMPETIÇÃO — mostra premiação em dinheiro
+  // =====================================================
+  if (tableType === "COMPETITION") {
+  const prizePool = Number(
+    liveTable?.competitionPrizePool ?? 0
+  );
+
+  potEl.innerHTML = `
+    <div class="competition-prize-mini">
+      <div class="competition-prize-mini-title">
+        PREMIAÇÃO:
+      </div>
+
+      <div class="competition-prize-mini-value">
+        R$ ${prizePool
+          .toFixed(2)
+          .replace(".", ",")}
+      </div>
+    </div>
+  `;
+
+  return;
+}
+
+
+  // =====================================================
+  // RECREATIVO — mantém o pote atual
+  // =====================================================
+  const pot =
+    typeof state.matchPot === "number"
+      ? state.matchPot
+      : 0;
+
+  potEl.innerHTML = `
+    <div class="chip-stack" aria-label="Pote ${pot}">
+      ${buildChipStackHTML(pot)}
+    </div>
+
+    <div class="pot-label">
+      Pote: ${Number(pot).toLocaleString("pt-BR")}
+    </div>
+  `;
+
+}
+
+
+
+// cria até 12 fichas só para visual (não precisa ser 1:1)
+function buildChipStackHTML(potValue) {
+  if (potValue <= 0) return "";
+
+  // denominações (do maior pro menor)
+  const denoms = [5000, 1000, 500, 100, 50, 25, 5, 1];
+
+  // monta uma lista de fichas (ganancioso)
+  let remaining = Math.floor(potValue);
+  const chips = [];
+
+  for (const d of denoms) {
+    const count = Math.floor(remaining / d);
+    if (count <= 0) continue;
+
+    // não precisa desenhar 200 fichas… limita por denominação (visual)
+    const maxPerDenom = 4;
+    const use = Math.min(count, maxPerDenom);
+
+    for (let i = 0; i < use; i++) chips.push(d);
+
+    remaining -= count * d; // desconta o valor real (mesmo que desenhe só parte)
+  }
+
+  // se o pote for pequeno e não entrou nenhuma, mostra 1 ficha
+  if (chips.length === 0) chips.push(1);
+
+  // limita total de fichas no desenho (visual)
+  const maxTotal = 14;
+  const finalChips = chips.slice(0, maxTotal);
+
+  // monta HTML em stack
+  let html = "";
+  for (let i = 0; i < finalChips.length; i++) {
+    const v = finalChips[i];
+    html += `<div class="chip chip-${v}" style="--i:${i}"></div>`;
+  }
+
+  return html;
+}
+
+export function renderRebuyOverlay() {
+  const gameEl = document.getElementById("game");
+
+  const tableId = state.room?.id;
+
+  const tableType = String(
+    state.room?.tableType ||
+    window.state?.tables?.[tableId]?.tableType ||
+    "RECREATIONAL"
+  ).toUpperCase();
+
+  if (tableType === "COMPETITION") {
+    state.rebuyDecisionUntil = 0;
+
+    if (window.rebuyOverlayTimer) {
+      clearInterval(window.rebuyOverlayTimer);
+      window.rebuyOverlayTimer = null;
+    }
+
+    document.getElementById("rebuyOverlay")?.remove();
+    return;
+  }
+
+  if (state.rebuyDecisionUntil && !window.rebuyOverlayTimer) {
+  window.rebuyOverlayTimer = setInterval(() => {
+    if (!state.rebuyDecisionUntil || Date.now() > state.rebuyDecisionUntil) {
+      clearInterval(window.rebuyOverlayTimer);
+      window.rebuyOverlayTimer = null;
+      document.getElementById("rebuyOverlay")?.remove();
+      return;
+    }
+
+    renderRebuyOverlay();
+  }, 1000);
+}
+  if (!gameEl) return;
+  if (state.matchEnded) {
+    document.getElementById("rebuyOverlay")?.remove();
+    return;
+  }
+
+  // só mostra durante a janela
+  if (!state.rebuyDecisionUntil || Date.now() > state.rebuyDecisionUntil) {
+    const ov0 = document.getElementById("rebuyOverlay");
+    if (ov0) ov0.remove();
+    return;
+  }
+
+  const mySeat = Number(state.mySeat || 0);
+
+  const eligible = (state.players || []).filter(pl =>
+    pl &&
+    Number(pl.seat) === mySeat &&
+    pl.eliminated === true &&
+    pl.pendingRebuy !== true &&
+    pl.rebuyDeclined !== true &&
+    (pl.rebuyCount || 0) < 3
+  );
+
+  const waitingRebuyPlayers = (state.players || []).filter(pl =>
+    pl &&
+    pl.eliminated === true &&
+    pl.pendingRebuy !== true &&
+    pl.rebuyDeclined !== true &&
+    (pl.rebuyCount || 0) < 3
+  );
+
+  let overlay = document.getElementById("rebuyOverlay");
+
+  if (!eligible.length) {
+
+    if (!waitingRebuyPlayers.length) {
+      if (overlay) overlay.remove();
+      return;
+    }
+
+    const secondsLeft = Math.max(
+      0,
+      Math.ceil((state.rebuyDecisionUntil - Date.now()) / 1000)
+    );
+
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "rebuyOverlay";
+      overlay.className = "rebuy-overlay";
+      gameEl.appendChild(overlay);
+    }
+
+    overlay.innerHTML = `
+      <div class="rebuy-modal">
+        <div class="rebuy-title">Aguardando Rebuy...</div>
+
+        <div class="rebuy-sub">
+          Próxima rodada em <b>${secondsLeft}</b>s
+        </div>
+      </div>
+    `;
+
+    return;
+  }
+
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "rebuyOverlay";
+    overlay.className = "rebuy-overlay";
+    gameEl.appendChild(overlay);
+  }
+
+  const ativos = (state.players || []).filter(pl =>
+    pl &&
+    !pl.eliminated &&
+    !pl.pendingRebuy
+  );
+
+  const pontosRetorno = ativos.length
+    ? Math.min(
+        ...ativos
+          .map(pl => Number(pl.vidas ?? pl.totalPoints ?? 0))
+          .filter(v => v > 0)
+      )
+    : 1;
+
+  const secondsLeft = Math.max(0, Math.ceil((state.rebuyDecisionUntil - Date.now()) / 1000));
+
+  overlay.innerHTML = `
+    <div class="rebuy-modal">
+      <div class="rebuy-title">Adicionar mais fichas?</div>
+      <div class="rebuy-sub">Você voltará com <b>${pontosRetorno}</b> pontos.</div>
+
+      <div class="rebuy-list">
+        ${eligible.map(pl => {
+          const nome = pl.name || "Jogador";
+          const nextIdx = Math.min((pl.rebuyCount || 0) + 1, 3);
+
+          return `
+            <div class="rebuy-row">
+              <div class="rebuy-left">
+                <div class="rebuy-name">${nome}</div>
+                <div class="rebuy-meta">
+                  Rebuy ${nextIdx}/3 • Volta com ${pontosRetorno} pts
+                </div>
+              </div>
+
+            <div class="rebuy-actions">
+              <button class="rebuy-btn" data-rebuy-id="${pl.id}">
+                Rebuy
+              </button>
+
+              <button class="rebuy-skip" data-decline-id="${pl.id}">
+                Cancelar
+              </button>
+            </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+
+      <div class="rebuy-foot">
+        Rodada inicia em <b id="rebuyCountdown">${secondsLeft}</b>s
+      </div>
+    </div>
+  `;
+
+  overlay.querySelectorAll("[data-rebuy-id]").forEach(btn => {
+    btn.onclick = () => {
+
+  btn.disabled = true;
+
+  const ok = requestRebuy();
+
+  if (!ok) {
+    btn.disabled = false;
+  } else {
+    btn.textContent = "Aguardando...";
+  }
+
+  if (!ok) window.showGameNotice("Não foi possível pedir rebuy.", "warn");
+  window.renderAll?.();
+  };
+  });
+
+  overlay.querySelectorAll("[data-decline-id]").forEach(btn => {
+  btn.onclick = () => {
+    console.log("[CLIENT] clique no botão Cancelar Rebuy");
+
+    btn.disabled = true;
+
+    if (typeof declineRebuy !== "function") {
+      console.error("[CLIENT] declineRebuy não existe neste escopo");
+      btn.disabled = false;
+      return;
+    }
+
+    const ok = declineRebuy();
+
+    console.log("[CLIENT] resultado declineRebuy:", ok);
+
+    if (!ok) {
+      btn.disabled = false;
+      return;
+    }
+
+    btn.textContent = "Cancelado";
+
+    window.renderAll?.();
+  };
+});
+}
+
+
+// =========================================================
+// 🏆 REENTRADA — COMPETIÇÃO
+// =========================================================
+
+export function renderReentryOverlay() {
+  const gameEl = document.getElementById("game");
+  if (!gameEl) return;
+
+  const tableId = state.room?.id;
+
+  const tableType = String(
+    state.room?.tableType ||
+    window.state?.tables?.[tableId]?.tableType ||
+    "RECREATIONAL"
+  ).toUpperCase();
+
+  // Reentrada existe somente em competição
+  if (tableType !== "COMPETITION") {
+    if (window.reentryOverlayTimer) {
+      clearInterval(window.reentryOverlayTimer);
+      window.reentryOverlayTimer = null;
+    }
+
+    document.getElementById("reentryOverlay")?.remove();
+    return;
+  }
+
+  // Atualiza contador durante a janela
+  if (
+    state.reentryDecisionUntil &&
+    !window.reentryOverlayTimer
+  ) {
+    window.reentryOverlayTimer = setInterval(() => {
+      if (
+        !state.reentryDecisionUntil ||
+        Date.now() > state.reentryDecisionUntil
+      ) {
+        clearInterval(window.reentryOverlayTimer);
+        window.reentryOverlayTimer = null;
+
+        document.getElementById("reentryOverlay")?.remove();
+        return;
+      }
+
+      renderReentryOverlay();
+    }, 1000);
+  }
+
+  if (state.matchEnded) {
+    document.getElementById("reentryOverlay")?.remove();
+    return;
+  }
+
+  // Só mostra durante a janela
+  if (
+    !state.reentryDecisionUntil ||
+    Date.now() > state.reentryDecisionUntil
+  ) {
+    document.getElementById("reentryOverlay")?.remove();
+    return;
+  }
+
+  const mySeat = Number(state.mySeat || 0);
+
+  // Jogador deste navegador
+  const me = (state.players || []).find(pl =>
+    pl &&
+    Number(pl.seat) === mySeat
+  );
+
+  let overlay = document.getElementById("reentryOverlay");
+
+  // =====================================================
+  // JOGADOR NÃO É O ELIMINADO QUE PRECISA DECIDIR
+  // =====================================================
+  const canDecide =
+    me &&
+    me.eliminated === true &&
+    me.pendingReentry !== true &&
+    me.reentryDeclined !== true &&
+    (me.reentryCount || 0) < 3;
+
+  if (!canDecide) {
+    if (overlay) {
+      overlay.remove();
+    }
+
+    return;
+  }
+
+  // =====================================================
+  // CALCULA PONTOS DE RETORNO
+  // =====================================================
+  const ativos = (state.players || []).filter(pl =>
+    pl &&
+    !pl.eliminated &&
+    !pl.pendingReentry
+  );
+
+  const vidasValidas = ativos
+    .map(pl => Number(pl.vidas ?? pl.totalPoints ?? 0))
+    .filter(v => v > 0);
+
+  const pontosRetorno = vidasValidas.length
+    ? Math.min(...vidasValidas)
+    : 1;
+
+  const pontosLabel =
+    pontosRetorno === 1
+      ? "pt"
+      : "pts";
+
+  const nextIdx = Math.min(
+    (me.reentryCount || 0) + 1,
+    3
+  );
+
+  const nome = me.name || "Jogador";
+
+  const secondsLeft = Math.max(
+    0,
+    Math.ceil(
+      (state.reentryDecisionUntil - Date.now()) / 1000
+    )
+  );
+
+  const progressPct = Math.max(
+    0,
+    Math.min(
+      100,
+      ((state.reentryDecisionUntil - Date.now()) / 15000) * 100
+    )
+  );
+
+  // =====================================================
+  // CRIA OVERLAY
+  // =====================================================
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "reentryOverlay";
+    overlay.className = "reentry-overlay";
+    gameEl.appendChild(overlay);
+  }
+
+  overlay.innerHTML = `
+    <div class="reentry-modal">
+
+      <div class="reentry-title">
+        Fazer Reentrada?
+      </div>
+
+      <div class="reentry-player-box">
+
+        <div class="reentry-player-name">
+          ${nome}
+        </div>
+
+        <div class="reentry-player-meta">
+          Reentrada ${nextIdx}/3
+          <span class="reentry-dot">•</span>
+          Volta com ${pontosRetorno} ${pontosLabel}
+        </div>
+
+        <div class="reentry-actions">
+
+          <button
+            class="reentry-btn-primary"
+            type="button"
+          >
+            Reentrada
+          </button>
+
+          <button
+            class="reentry-btn-secondary"
+            type="button"
+          >
+            Cancelar
+          </button>
+
+        </div>
+
+      </div>
+
+      <div class="reentry-timer">
+
+        <div class="reentry-timer-track">
+          <div
+            class="reentry-timer-fill"
+            style="width: ${progressPct}%"
+          ></div>
+        </div>
+
+        <div class="reentry-timer-text">
+          Rodada inicia em
+          <b>${secondsLeft}s</b>
+        </div>
+
+      </div>
+
+    </div>
+  `;
+
+  // =====================================================
+  // ACEITAR
+  // =====================================================
+  const btnReentry =
+    overlay.querySelector(".reentry-btn-primary");
+
+  if (btnReentry) {
+    btnReentry.onclick = () => {
+      btnReentry.disabled = true;
+
+      const ok = requestReentry();
+
+      if (!ok) {
+        btnReentry.disabled = false;
+
+        window.showGameNotice?.(
+          "Não foi possível solicitar a Reentrada.",
+          "warn"
+        );
+
+        return;
+      }
+
+      btnReentry.textContent = "Aguardando...";
+    };
+  }
+
+  // =====================================================
+  // CANCELAR
+  // =====================================================
+  const btnDecline =
+    overlay.querySelector(".reentry-btn-secondary");
+
+  if (btnDecline) {
+    btnDecline.onclick = () => {
+      btnDecline.disabled = true;
+
+      const ok = declineReentry();
+
+      if (!ok) {
+        btnDecline.disabled = false;
+
+        window.showGameNotice?.(
+          "Não foi possível cancelar a Reentrada.",
+          "warn"
+        );
+
+        return;
+      }
+
+      btnDecline.textContent = "Cancelado";
+    };
+  }
+}
+
+export function renderEndMatchOverlay() {
+  const rootEl = document.body;
+  if (!rootEl) return;
+
+  // remove se não acabou
+  if (!state.matchEnded || !state.canRematch) {
+    document.getElementById("endMatchOverlay")?.remove();
+    return;
+  }
+
+  let ov = document.getElementById("endMatchOverlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "endMatchOverlay";
+    ov.className = "endmatch-overlay";
+    rootEl.appendChild(ov);
+  }
+
+  const winner = state.players?.find(
+    p => Number(p.seat) === Number(state.matchWinnerSeat)
+  );
+  const winnerName = winner?.name || "—";
+
+  const matchPot = Number(state.matchPot) || 0;
+  const houseRake = Number(state.houseRake) || 0;
+  const winnerPayout = Number(state.winnerPayout) || 0;
+  const houseRakePct = Math.round((Number(state.houseRakePct) || 0) * 100);
+
+  const isCompetition =
+    String(state.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION";
+
+  const competitionGross =
+    Number(state.competitionGross) || 0;
+
+  const competitionOrganizationFee =
+    Number(state.competitionOrganizationFee) || 0;
+
+  const competitionPrizePool =
+    Number(state.competitionPrizePool) || 0;
+
+  const formatMoney = (value) =>
+    Number(value || 0).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+
+  ov.innerHTML = `
+    <div class="endmatch-modal">
+      <div class="endmatch-title">
+        ${isCompetition ? "Fim da Competição!" : "Fim da Partida!"}
+      </div>
+
+      <div class="endmatch-body">
+        <div class="endmatch-line"><b>${winnerName}</b></div>
+
+        <div class="endmatch-line">
+          🏆 ${isCompetition ? "Campeão da competição" : "Vencedor da partida"}
+        </div>
+
+        ${
+          isCompetition
+            ? `
+              <div class="endmatch-line" style="margin-top:10px;">
+                Total arrecadado:
+                <b>${formatMoney(competitionGross)}</b>
+              </div>
+
+              <div class="endmatch-line">
+                Taxa de organização:
+                <b>${formatMoney(competitionOrganizationFee)}</b>
+              </div>
+
+              <div class="endmatch-line">
+                Premiação:
+                <b>${formatMoney(competitionPrizePool)}</b>
+              </div>
+            `
+            : `
+              <div class="endmatch-line" style="margin-top:10px;">
+                Pote final:
+                <b>${matchPot.toLocaleString("pt-BR")}</b>
+              </div>
+
+              <div class="endmatch-line">
+                Taxa da casa:
+                <b>${houseRake.toLocaleString("pt-BR")}</b>
+                (${houseRakePct}%)
+              </div>
+
+              <div class="endmatch-line">
+                Prêmio do vencedor:
+                <b>${winnerPayout.toLocaleString("pt-BR")}</b>
+              </div>
+            `
+        }
+
+        <div class="endmatch-actions" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+          <button id="btnRematch" class="endmatch-btn">
+            ${isCompetition ? "Nova competição" : "Revanche"}
+          </button>
+
+          <button id="btnBackTables" class="endmatch-btn">
+            Voltar às mesas
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const btnRematch = ov.querySelector("#btnRematch");
+  const btnBackTables = ov.querySelector("#btnBackTables");
+
+  const handleRematch = (ev) => {
+    ev?.preventDefault?.();
+    ev?.stopPropagation?.();
+    console.log("[ENDMATCH] aceitar revanche");
+    window.rematchSameTable?.();
+  };
+
+  const handleBackTables = (ev) => {
+    ev?.preventDefault?.();
+    ev?.stopPropagation?.();
+    console.log("[ENDMATCH] voltar às mesas");
+    window.backToTables?.();
+  };
+
+  if (btnRematch) {
+    btnRematch.onclick = handleRematch;
+    btnRematch.ontouchend = handleRematch;
+  }
+
+  if (btnBackTables) {
+    btnBackTables.onclick = handleBackTables;
+    btnBackTables.ontouchend = handleBackTables;
+  }
+
+}
+
+let dealingUiTimer = null;
+let dealSfxLoopTimer = null;
+let lastDealSfxLoopEndsAt = 0;
+
+
+function stopDealSfxLoop() {
+  if (dealSfxLoopTimer) {
+    clearInterval(dealSfxLoopTimer);
+    dealSfxLoopTimer = null;
+  }
+
+  lastDealSfxLoopEndsAt = 0;
+
+  try {
+    if (dealAudio) {
+      dealAudio.pause();
+      dealAudio.currentTime = 0;
+    }
+  } catch (_) {}
+
+  dealAudioPlaying = false;
+}
+
+
+function startDealSfxLoop() {
+  const dealEndsAt = Number(state.dealEndsAt || 0);
+  if (!dealEndsAt) return;
+
+  // já está tocando → não inicia de novo
+  if (dealAudioPlaying && lastDealSfxLoopEndsAt === dealEndsAt) return;
+
+  stopDealSfxLoop();
+  lastDealSfxLoopEndsAt = dealEndsAt;
+
+  try {
+    const audio = getDealAudio();
+
+    audio.currentTime = 0;
+
+    const p = audio.play();
+
+    dealAudioPlaying = true;
+
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {
+        dealAudioPlaying = false;
+        playSfx("deal"); // fallback
+      });
+    }
+  } catch (e) {
+    dealAudioPlaying = false;
+    console.error("[DEAL AUDIO] erro", e);
+    playSfx("deal");
+  }
+
+  // apenas para monitorar fim
+  dealSfxLoopTimer = setInterval(() => {
+    const stillDealing =
+      state.faseTurno === "DEALING" &&
+      Number(state.dealEndsAt || 0) > Date.now();
+
+    if (!stillDealing) {
+      stopDealSfxLoop();
+    }
+  }, 200);
+}
+
+export function renderDealOverlay() {
+  let el = document.getElementById("deal-overlay");
+
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "deal-overlay";
+    /*el.style.position = "absolute";
+    el.style.top = "50%";
+    el.style.left = "50%";
+    el.style.transform = "translate(-50%, -50%)";
+    el.style.zIndex = "10000";
+
+    // visual ajustado
+    el.style.background = "rgba(8, 10, 8, 0.88)";
+    el.style.color = "#fff";
+    el.style.padding = "18px 26px";
+    el.style.borderRadius = "16px";
+    el.style.textAlign = "center";
+    el.style.minWidth = "260px";
+    el.style.border = "1px solid rgba(255, 215, 80, 0.22)";
+    el.style.boxShadow = "0 14px 34px rgba(0,0,0,0.42)";*/
+    el.style.backdropFilter = "blur(4px)";
+
+    document.body.appendChild(el);
+  }
+
+  clearTimeout(dealingUiTimer);
+
+  const isDealing =
+    state.faseTurno === "DEALING" &&
+    Number(state.dealEndsAt || 0) > Date.now();
+
+  if (!isDealing) {
+    el.style.display = "none";
+    stopDealSfxLoop();
+    return;
+  }
+
+  startDealSfxLoop();
+
+  const leftMs = Math.max(0, Number(state.dealEndsAt || 0) - Date.now());
+
+  const leftSec = (leftMs / 1000).toFixed(1);
+
+  const isMobileDeal =
+  document.body.classList.contains("mobile-table-mode") ||
+  window.matchMedia?.("(max-width: 520px) and (orientation: portrait)")?.matches;
+
+el.innerHTML = `
+  <div class="deal-title">
+    ${isMobileDeal ? "Nova rodada" : "Distribuindo cartas..."}
+  </div>
+
+  <div class="deal-progress">
+    <div
+      class="deal-progress-fill"
+      style="width:${Math.max(
+        0,
+        Math.min(
+          100,
+          (leftMs / Number(state.dealMs || 6000)) * 100
+        )
+      )}%">
+    </div>
+  </div>
+
+  <div class="deal-subtitle">
+    ${isMobileDeal ? "Começando em" : "Nova rodada começa em"}
+    <span class="deal-time">${leftSec}s</span>
+  </div>
+`;
+
+
+  el.style.display = "block";
+
+  dealingUiTimer = setTimeout(() => {
+    window.renderAll?.();
+  }, 120);
+}
+
+
+export function renderRoundInfo() {
+  const el = document.getElementById("round-info");
+  if (el) {
+    el.remove();
+  }
+}
+
+export function renderRebuyButton() {
+  let box = document.getElementById("rebuy-box");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "rebuy-box";
+    box.style.position = "absolute";
+    box.style.top = "16px";
+    box.style.right = "16px";
+    box.style.zIndex = "9999";
+    box.style.background = "rgba(0,0,0,0.85)";
+    box.style.color = "#fff";
+    box.style.padding = "12px";
+    box.style.borderRadius = "10px";
+    box.style.display = "none";
+    box.style.minWidth = "180px";
+    box.style.textAlign = "center";
+    document.body.appendChild(box);
+  }
+
+  if (!state || !Array.isArray(state.players)) {
+    box.style.display = "none";
+    return;
+  }
+
+  const me = state.players.find(p => p && p.seat === state.mySeat);
+  const now = Date.now();
+  const end = Number(state.rebuyDecisionUntil || 0);
+
+  // só mostra se eu estiver eliminado e a janela ainda estiver aberta
+  if (!me || !me.eliminated || !end || now > end) {
+    box.style.display = "none";
+    return;
+  }
+
+  const secs = Math.max(0, Math.ceil((end - now) / 1000));
+  const cost = typeof me.rebuyCount === "number"
+    ? 1000 * Math.pow(2, me.rebuyCount || 0)
+    : 1000;
+
+    box.innerHTML = `
+    <div style="font-weight:bold; margin-bottom:8px;">REBUY</div>
+    <div style="margin-bottom:8px;">Você voltará com o menor ponto entre os jogadores ativos.</div>
+    <div style="margin-bottom:8px;">Tempo: ${secs}s</div>
+    <div style="margin-bottom:8px;">Custo: ${cost}</div>
+    <button id="rebuy-yes-btn" style="padding:6px 12px; cursor:pointer;">SIM</button>
+  `;
+
+  box.style.display = "block";
+
+  const btn = document.getElementById("rebuy-yes-btn");
+  if (btn) {
+    btn.onclick = () => {
+      requestRebuy();
+    };
+  }
+}
+
+
+function getHudCardsTargetBySeat(seat) {
+  const seatNum = Number(seat);
+
+  if (!seatNum) return null;
+
+  // Landscape
+  if (isMobileLandscapeTable()) {
+    return document.querySelector(
+      `#mobileLandscapeTableLayout
+       [data-landscape-seat="${seatNum}"]
+       .landscape-seat-cards`
+    );
+  }
+
+  // Portrait
+  if (isMobilePortraitTable()) {
+    return document.querySelector(
+      `#mobileTableLayout
+       [data-seat-pos="${seatNum}"]
+       .mobile-seat-cards`
+    );
+  }
+
+  // Desktop
+  return document.querySelector(
+    `#desktopTableLayout
+     [data-seat-pos="${seatNum}"]
+     .desktop-seat-cards`
+  );
+}
+
+function animateHudCardMovement({
+  fromEl,
+  toEl,
+  card,
+  duration = 650,
+  faceDown = false,
+  onComplete = null
+}) {
+  if (!fromEl || !toEl) return;
+
+  const from = fromEl.getBoundingClientRect();
+  const to = toEl.getBoundingClientRect();
+
+  if (
+    from.width <= 0 ||
+    from.height <= 0 ||
+    to.width <= 0 ||
+    to.height <= 0
+  ) {
+    return;
+  }
+
+  const ghost = document.createElement("div");
+  ghost.className = "hud-card-flight";
+
+  ghost.style.backgroundImage = faceDown
+    ? "url('./assets/cards/back-01.png')"
+    : `url('${getCardImage(card)}')`;
+
+  const sourceCard =
+    fromEl.querySelector?.(
+      ".mini-card, .mobile-mini-card, .landscape-mini-card"
+    );
+
+  const sourceRect =
+    sourceCard?.getBoundingClientRect?.();
+
+  const startWidth =
+    sourceRect?.width || 22;
+
+  const startHeight =
+    sourceRect?.height || 34;
+
+  const targetCard =
+    toEl.querySelector?.(
+      ".mini-card, .mobile-mini-card, .landscape-mini-card"
+    );
+
+  const targetRect =
+    targetCard?.getBoundingClientRect?.();
+
+  const endWidth =
+    (targetRect?.width || startWidth) * 2;
+
+  const endHeight =
+    (targetRect?.height || startHeight) * 2;
+
+  const startX =
+    from.left +
+    from.width / 2 -
+    startWidth / 2;
+
+  const startY =
+    from.top +
+    from.height / 2 -
+    startHeight / 2;
+
+  const endX =
+    to.left +
+    to.width / 2 -
+    endWidth / 2;
+
+  const endY =
+    to.top +
+    to.height / 2 -
+    endHeight / 2;
+
+  ghost.style.left = `${startX}px`;
+  ghost.style.top = `${startY}px`;
+
+  ghost.style.width = `${startWidth}px`;
+  ghost.style.height = `${startHeight}px`;
+
+  document.body.appendChild(ghost);
+
+  ghost.getBoundingClientRect();
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      ghost.style.left = `${endX}px`;
+      ghost.style.top = `${endY}px`;
+
+      ghost.style.width = `${endWidth}px`;
+      ghost.style.height = `${endHeight}px`;
+    });
+  });
+
+  setTimeout(() => {
+    ghost.remove();
+
+    if (typeof onComplete === "function") {
+      onComplete();
+    }
+  }, duration + 50);
+}
+
+export function playPendingHudDrawAnimation() {
+  const fx = state.pendingHudDrawAnim;
+
+
+  if (!fx?.seat || !fx?.source) return;
+
+  const source = String(fx.source).toUpperCase();
+
+  // por enquanto, esta animação é para compra do monte
+  if (source !== "DECK") {
+    state.pendingHudDrawAnim = null;
+    return;
+  }
+
+  const fromEl = document.getElementById("monte");
+
+
+  if (!fromEl) return;
+
+  const toEl = getHudCardsTargetBySeat(fx.seat);
+
+  if (!toEl) return;
+
+  state.pendingHudDrawAnim = null;
+
+  flyCard({
+    fromEl,
+    toEl,
+    imageUrl: "./assets/cards/back-01.png",
+    sfx: "draw",
+    duration: 400
+  });
+}

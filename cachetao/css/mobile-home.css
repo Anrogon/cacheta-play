@@ -1,0 +1,222 @@
+/* =========================================================
+   MOBILE HOME
+   Página inicial no celular
+========================================================= */
+
+@media (max-width: 768px) and (orientation: portrait) {
+
+  #homeScreen {
+    min-height: 100vh;
+    padding: 14px 10px;
+    box-sizing: border-box;
+  }
+
+  #homeScreen .home-shell {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+
+ #homeScreen .home-logo picture,
+  #homeScreen .home-logo img {
+      display: block;
+      margin: 0 auto;
+  }
+
+  #homeScreen .home-logo img {
+      width: 78%;
+      max-width: 290px;
+      height: auto;
+  }
+
+  #homeScreen .home-menu {
+    width: min(92vw, 320px);
+    max-width: 320px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+
+  #homeScreen .home-menu button {
+    width: 100%;
+    max-width: 320px;
+
+    background: linear-gradient(180deg,#a51f36,#731726);
+    border: 1px solid rgba(212,175,55,.30);
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+
+    padding: 12px 14px;
+    border-radius: 14px;
+
+    font-size: 16px;
+    font-weight: 900;
+
+    white-space: nowrap;
+    box-sizing: border-box;
+
+    box-shadow: 0 8px 18px rgba(0,0,0,.20);
+
+    transition:
+      transform .10s ease,
+      box-shadow .10s ease,
+      filter .10s ease,
+      background .10s ease;
+}
+
+  /* Desktop */
+  #homeScreen .home-menu button:hover{
+      background: linear-gradient(180deg,#bd2941,#8b1d2f);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px rgba(0,0,0,.28);
+  }
+
+  /* Celular */
+  #homeScreen .home-menu button:active{
+      transform: scale(.97);
+      filter: brightness(.88);
+
+      box-shadow:
+          inset 0 3px 8px rgba(0,0,0,.35),
+          0 2px 6px rgba(0,0,0,.15);
+  }
+
+  #homeScreen .home-menu button:active{
+    background: linear-gradient(180deg,#bd2941,#8b1d2f);
+    filter: brightness(.95);
+    transform: scale(.97);
+  }
+
+  #homeScreen .home-menu button[style*="display:none"],
+  #homeScreen .home-menu button[style*="display: none"] {
+    display: none !important;
+  }
+
+  #homeScreen .home-menu .btn-icon {
+    flex: 0 0 28px;
+    width: 28px;
+    text-align: center;
+  }
+
+  #homeScreen .home-menu .btn-text {
+    flex: 1;
+    text-align: center;
+  }
+
+  #homeScreen .home-status-wrap {
+    width: min(92vw, 320px);
+    max-width: 320px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+
+    margin-top: 8px;
+  }
+
+  #homeScreen .home-usercard,
+  #homeScreen .home-status {
+    width: 100%;
+    box-sizing: border-box;
+
+    padding: 12px 14px;
+    border-radius: 16px;
+  }
+
+  #homeScreen .home-usercard-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  #homeScreen .home-user-avatar {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  #homeScreen .home-user-meta {
+    min-width: 0;
+  }
+
+  #homeUserName {
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+
+  #homeUserBalance,
+  #homeUserCashBalance {
+    font-size: 14px;
+    line-height: 1.15;
+  }
+
+  #homeScreen .home-banner {
+    width: min(92vw, 360px);
+    margin: 14px auto 0;
+    padding: 14px;
+
+    border-radius: 16px;
+  }
+
+  #homeScreen .home-banner-title {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  #homeScreen .home-banner-sub {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+
+  #homeScreen .home-live-section,
+  #homeScreen .home-tip-section {
+    width: min(92vw, 360px);
+    margin: 12px auto 0;
+    padding: 12px;
+    box-sizing: border-box;
+  }
+
+  #homeScreen .home-live-row,
+  #homeScreen .home-live-row-visual {
+    grid-template-columns: 1fr;
+  }
+
+  #homeScreen .home-footer {
+    margin-top: 14px;
+    font-size: 15px;
+  }
+
+  #homeScreen .home-status {
+    display: none !important;
+  }
+
+  #homeScreen .home-banner {
+    display: none !important;
+  }
+
+  #homeScreen .home-lastrow,
+  #homeScreen .home-panels {
+    display: none !important;
+  }
+
+  #homeScreen .home-live-section,
+  #homeScreen .home-tip-section,
+  #homeScreen .home-footer {
+    display: none !important;
+  }
+}

@@ -1,0 +1,2605 @@
+import { initDeck, shuffleDeck } from "./deck.js";
+import { state } from "./state.js";
+import {
+  initPlayers,
+  nextPlayer,
+  unlockAudio,
+  dealInitialCardsAnimated,
+  collectAnte
+} from "./actions.js";
+import {
+  renderHand,
+  renderTable,
+  renderMonte,
+  renderLixo,
+  renderPlayerInfo,
+  bindTableUI,
+  renderRoundInfo,
+  renderNextPlayerButton,
+  renderPot,
+  renderRebuyOverlay,
+  renderEndMatchOverlay,
+  renderScoreboard,
+  renderDealOverlay,
+  playPendingDrawAnimation,
+  playPendingDiscardDrawAnimation,
+  playPendingHudDrawAnimation,
+  renderReentryOverlay,
+  playPendingHandToTableAnimation
+} from "./render.js";
+import { startTurnTimer } from "./turnTimer.js";
+import { showScreen } from "./screens.js";
+
+window.openTablesFromHome = function () {
+  state.selectedVariant = "CACHETAO";
+  renderTablesScreen();
+
+  document.getElementById("homeScreen").style.display = "none";
+  document.getElementById("game").style.display = "none";
+  document.getElementById("tablesScreen").style.display = "";
+};
+
+const API_BASE =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3005/api"
+    : "/api";
+
+// =============================
+// ONLINE (WS)
+// =============================
+let socket = null;
+let myClientId = null;
+let nextActionSeq = 1;
+
+window.socket = null; // debug
+
+
+// Conecta no WebSocket do MESMO host do site
+export function connectWS() {
+  if (socket && (socket.readyState === 0 || socket.readyState === 1)) return;
+
+  const proto = (location.protocol === "https:") ? "wss" : "ws";
+  socket = new WebSocket(`${proto}://${location.host}`);
+
+  window.socket = socket; // debug
+  window.state = state;   // debug
+
+  socket.addEventListener("open", () => {
+  });
+
+  socket.addEventListener("close", () => {
+  });
+
+  socket.addEventListener("message", (ev) => {
+    let msg;
+    try { msg = JSON.parse(ev.data); } catch { return; }
+
+
+    // ===== STATUS ONLINE DA HOME =====
+    if (msg.type === "online_status") {
+      const onlinePlayersEl =
+        document.getElementById("onlinePlayers");
+
+      const openTablesEl =
+        document.getElementById("openTables");
+
+      if (onlinePlayersEl) {
+        onlinePlayersEl.textContent =
+          Number(msg.payload?.onlinePlayers) || 0;
+      }
+
+      if (openTablesEl) {
+        openTablesEl.textContent =
+          Number(msg.payload?.openTables) || 0;
+      }
+
+      return;
+    }
+
+
+    // 1) hello
+    if (msg.type === "hello") {
+      myClientId = msg.payload?.clientId || null;
+
+      // garante estrutura
+      if (!window.state) window.state = state;
+
+      const tables = Array.isArray(msg.payload?.tables)
+        ? msg.payload.tables
+        : [];
+
+      // ✅ lista base das mesas para o render
+      state.tableList = tables.map(table => ({
+        id: table.id,
+        name: table.name,
+        buyIn: table.buyIn
+      }));
+
+      // ✅ estado dinâmico por id
+      state.tables = {};
+      tables.forEach((table) => {
+        state.tables[table.id] = table;
+      });
+
+      state.online = msg.payload?.online || 0;
+
+      // ✅ redesenha a sala de mesas imediatamente
+      if (typeof renderTablesScreen === "function") {
+        renderTablesScreen();
+      }
+
+      return;
+    }
+
+
+      
+// 1) hello
+if (msg.type === "hello") {
+  myClientId = msg.payload?.clientId || null;
+
+  // garante estrutura
+  if (!window.state) window.state = state;
+
+  const tables = Array.isArray(msg.payload?.tables) ? msg.payload.tables : [];
+
+  // ✅ lista base das mesas para o render
+  state.tableList = tables.map(table => ({
+    id: table.id,
+    name: table.name,
+    buyIn: table.buyIn
+  }));
+
+  // ✅ estado dinâmico por id
+  state.tables = {};
+  tables.forEach((table) => {
+    state.tables[table.id] = table;
+  });
+
+  state.online = msg.payload?.online || 0;
+  // ✅ redesenha a sala de mesas imediatamente
+  if (typeof renderTablesScreen === "function") {
+    renderTablesScreen();
+  }
+
+  return;
+}
+
+async function sendWhenWsReady(message, options = {}) {
+  const timeoutMs = options.timeoutMs || 2500;
+  const label = options.label || "ação";
+
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify(message));
+    return true;
+  }
+
+  console.warn(`[WS] não estava conectado para ${label}. Tentando reconectar...`);
+  showGameNotice("Reconectando...");
+
+  try {
+    connectWS?.();
+  } catch (err) {
+    console.error("[WS] erro ao tentar reconectar:", err);
+  }
+
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify(message));
+      console.log(`[WS] ${label} enviada após reconexão`);
+      return true;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+
+  showGameNotice("Não foi possível reconectar. Tente novamente.");
+  return false;
+}
+
+// 1.5) table_public
+if (msg.type === "table_public") {
+  const table = msg.payload || {};
+  if (!table.id) return;
+
+  window.state = window.state || {};
+  window.state.tables = window.state.tables || {};
+
+  window.state.tables[table.id] = {
+    ...(window.state.tables[table.id] || {}),
+    ...table
+  };
+
+  const tablesScreen = document.getElementById("tablesScreen");
+  if (tablesScreen && tablesScreen.style.display !== "none") {
+    renderTablesScreen();
+  }
+
+  return;
+}
+
+// 2) joined
+if (msg.type === "joined") {
+
+  const { tableId, mode, seat, reconnectToken } = msg.payload || {};
+  // ✅ Se estava tentando assistir outra mesa e chegou joined antigo, ignora
+  if (
+    mode === "spectator" &&
+    pendingSpectatorJoinTableId &&
+    tableId !== pendingSpectatorJoinTableId &&
+    !String(tableId || "").startsWith(String(pendingSpectatorJoinTableId) + "#")
+  ) {
+return;
+  }
+
+  // Se o espectador está mudando de mesa,
+  // limpa o estado visual deixado pela mesa anterior.
+  if (
+    mode === "spectator" &&
+    state.room?.id &&
+    String(state.room.id) !== String(tableId)
+  ) {
+    state.players = [];
+    state.lixo = [];
+    state.table = [];
+    state.deckCount = 0;
+
+    state.cartaVira = null;
+    state.coringaValor = "";
+    state.coringaNaipes = [];
+
+    state.currentSeat = null;
+    state.faseTurno = "WAITING";
+    state.turnEndsAt = 0;
+
+    state.started = false;
+    state.roundEnded = false;
+    state.winnerSeat = null;
+
+    state.selectedCards = [];
+  }
+
+  state.room = state.room || {};
+  state.room.id = tableId;
+  state.tableId = tableId;
+
+  state.spectator = (mode === "spectator");
+  state.mySeat = seat ?? null;
+
+  if (mode === "spectator") {
+  state.tableId = tableId;
+
+  // limpa qualquer estado visual da mesa assistida anteriormente
+  state.players = [];
+  state.table = [];
+  state.lixo = [];
+  state.deckCount = 0;
+  state.matchPot = 0;
+  state.pot = 0;
+
+  // limpa imediatamente os HUDs desktop da mesa anterior
+  document
+    .querySelectorAll("#desktopTableLayout .desktop-seat")
+    .forEach(el => {
+      el.innerHTML = "";
+      el.classList.add("empty");
+      el.classList.remove("is-current-turn");
+    });
+}
+
+  // ✅ entrou de fato como espectador
+  if (mode === "spectator") {
+    pendingSpectatorJoinTableId = null;
+    ignoredRoomAfterSpectatorExit = null;
+  }
+
+  // Jogador reconectou/entrou novamente na mesa.
+  // A partir daqui o state_public desta mesa deve voltar a ser aceito.
+  if (mode === "player") {
+    ignoredRoomAfterSpectatorExit = null;
+  }
+
+  if (tableId && seat && reconnectToken) {
+    localStorage.setItem(
+      `buraco_reconnect_${tableId}_${seat}`,
+      reconnectToken
+    );
+  }
+
+  window.state = window.state || {};
+  window.state.tables = window.state.tables || {};
+  window.state.tables[tableId] = window.state.tables[tableId] || { id: tableId };
+  if (mode === "spectator") {
+    showScreen("game");
+
+    // redesenha imediatamente com o estado da nova mesa,
+    // evitando manter o DOM da mesa assistida anteriormente
+    renderAll();
+
+    updateSpectatorUI();
+  } else {
+    showScreen("tables");
+    renderTablesScreen();
+    updateSpectatorUI();
+  }
+
+  return;
+}
+
+
+// 3) state_public
+if (msg.type === "state_public") {
+  const pub = msg.payload || {};
+
+  // Não deixa estado de outra mesa contaminar
+  // a mesa em que este cliente está.
+  if (
+    state.room?.id &&
+    pub.tableId &&
+    String(pub.tableId) !== String(state.room.id)
+  ) {
+    return;
+  }
+
+  if (state.room === null && state.spectator === false) {
+return;
+  }
+
+  if (
+    ignoredRoomAfterSpectatorExit &&
+    pub.tableId === ignoredRoomAfterSpectatorExit &&
+    state.room &&
+    state.spectator === false
+  ) {
+return;
+  }
+
+  state.tableId = pub.tableId || state.tableId;
+  state.matchPot = Number(pub.matchPot) || 0;
+  state.pot = state.matchPot;
+  // Cachetão Pro - Vira / Coringa da rodada
+  state.cartaVira = pub.cartaVira || null;
+
+  state.viraDisponivelParaJogar =
+    !!pub.viraDisponivelParaJogar;
+
+  state.primeiroCompradorSeat =
+    Number(pub.primeiroCompradorSeat) || 0;
+
+  state.viraEmUsoPorSeat =
+    Number(pub.viraEmUsoPorSeat) || 0;
+
+  state.viraNaMesa =
+    pub.viraNaMesa !== false;
+
+  state.coringaValor = pub.coringaValor || "";
+  state.coringaNaipes =
+    Array.isArray(pub.coringaNaipes)
+      ? pub.coringaNaipes
+      : [];
+
+  // 🔥 ATUALIZA LOBBY (tables) COM ESTADO DO SERVIDOR
+if (pub.tableId) {
+  const prev = window.state.tables?.[pub.tableId] || {};
+
+  const mergedSeats = Array.isArray(pub.seats)
+    ? pub.seats.map((p, i) => p ? ({
+        ...p,
+        seat: i + 1
+      }) : null)
+    : (prev.seats || []);
+
+  window.state.tables = window.state.tables || {};
+
+  window.state.tables[pub.tableId] = {
+    ...prev,
+    id: pub.tableId,
+    name: prev.name,
+    buyIn: prev.buyIn,
+    started: pub.started ?? prev.started ?? false,
+    currentSeat: pub.currentSeat ?? prev.currentSeat ?? 1,
+    phase: pub.phase ?? prev.phase ?? "WAITING",
+    seats: mergedSeats,
+    seatedCount: Array.isArray(pub.seats)
+      ? pub.seats.filter(Boolean).length
+      : (prev.seatedCount || 0),
+    maxSeats: prev.maxSeats || 6,
+    minPlayersToStart: pub.minPlayersToStart ?? prev.minPlayersToStart ?? 2,
+    startAt: Number(pub.startAt) || 0,
+    tableMelds: Array.isArray(pub.tableMelds)
+      ? pub.tableMelds
+      : (prev.tableMelds || []),
+
+    discardTop: pub.discardTop ?? prev.discardTop ?? null,
+    deckCount: pub.deckCount ?? prev.deckCount ?? 0,
+    matchPot: Number(pub.matchPot) || 0,
+    roundNumber: Number(pub.roundNumber) || 0
+  };
+}
+  state.started = !!pub.started;
+  state.selectedVariant = "CACHETAO";
+  state.roundEnded = !!pub.roundEnded;
+  state.winnerSeat = pub.winnerSeat ?? null;
+  state.rematchVotes = pub.rematchVotes || {};
+
+  if (state.roundEnded) {
+    state.lastRoundSummary = {
+      winnerSeat: state.winnerSeat,
+      timestamp: Date.now()
+    };
+  }
+
+  // turn/fase
+  // turn/fase
+  state.faseTurno = pub.phase || "WAITING";
+  state.currentSeat = pub.currentSeat ?? null;
+  state.dealerSeat = Number(pub.dealerSeat) || 0;
+  state.variant = String(pub.variant || "CLASSIC").toUpperCase();
+  state.turnEndsAt = Number(pub.turnEndsAt) || 0;
+  state.buyEndsAt = Number(pub.buyEndsAt) || 0;
+  const safeTurnMs = Number(pub.turnMs);
+  state.turnDurationSec = Math.ceil(
+    (safeTurnMs > 0 && safeTurnMs <= 60000 ? safeTurnMs : 30000) / 1000
+  );
+
+  const safeBuyMs = Number(pub.buyMs);
+  state.buyDurationSec = Math.ceil(
+    (safeBuyMs > 0 && safeBuyMs <= 30000 ? safeBuyMs : 15000) / 1000
+  );
+  state.dealEndsAt = Number(pub.dealEndsAt) || 0;
+  state.dealMs = Number(pub.dealMs) || 2200;
+  state.batidaAnnouncement = String(pub.batidaAnnouncement || "");
+  state.batidaAnnouncementEndsAt = Number(pub.batidaAnnouncementEndsAt) || 0;
+  state.phase = String(pub.phase || "");
+
+// Cachetão Pro - som de embaralhamento antes do duelo
+if (
+  state.phase === "AGUARDANDO_DUELO" &&
+  window.lastCachetaoDuelAudioPhase !== "AGUARDANDO_DUELO"
+) {
+  window.lastCachetaoDuelAudioPhase = "AGUARDANDO_DUELO";
+  window.playSfx?.("shuffle");
+}
+
+if (state.phase !== "AGUARDANDO_DUELO") {
+  window.lastCachetaoDuelAudioPhase = state.phase || "";
+}
+
+state.currentSeat = Number(pub.currentSeat) || 0;
+  state.crazyBatidaAttemptActive = !!pub.crazyBatidaAttemptActive;
+  state.crazyBatidaAttemptUsesVira = !!pub.crazyBatidaAttemptUsesVira;
+  state.crazyBatidaAttemptSeat = Number(pub.crazyBatidaAttemptSeat) || 0;
+  state.crazyBatidaAttemptPrioritySeat = Number(pub.crazyBatidaAttemptPrioritySeat) || 0;
+  state.crazyBatidaAttemptExpiresAt = Number(pub.crazyBatidaAttemptExpiresAt) || 0;
+  state.crazyBatidaBurnedBySeat = pub.crazyBatidaBurnedBySeat || {};
+
+  // sempre limpa seleção
+  state.selectedCards = [];
+
+  // lixo / mesa / deck
+  const oldDiscardId = state.lixo?.[0]?.id ? String(state.lixo[0].id) : null;
+  const newDiscardId = pub.discardTop?.id ? String(pub.discardTop.id) : null;
+  // =========================================================
+  // IDENTIFICA SE ESTE STATE TROUXE UMA NOVA COMPRA
+  // =========================================================
+  const incomingDrawSeq =
+    Number(pub.lastDrawSeq) || 0;
+
+  const previousDrawSeq =
+    Number(state.lastHudDrawSeq) || 0;
+
+  if (
+    incomingDrawSeq > 0 &&
+    incomingDrawSeq !== previousDrawSeq &&
+    pub.lastDrawSeat &&
+    pub.lastDrawSource &&
+    Number(pub.lastDrawSeat) !== Number(state.mySeat)
+  ) {
+    state.lastHudDrawSeq = incomingDrawSeq;
+
+
+    console.log("[BOT-DRAW APP] evento recebido", {
+  lastDrawSeat: pub.lastDrawSeat,
+  lastDrawSource: pub.lastDrawSource,
+  lastDrawSeq: pub.lastDrawSeq,
+  previousSeq: state.lastHudDrawSeq
+});
+
+    state.pendingHudDrawAnim = {
+      seat: Number(pub.lastDrawSeat),
+      source: String(pub.lastDrawSource),
+      card: pub.lastDrawCard || null
+    };
+
+
+    console.log(
+  "[BOT-DRAW APP] pending criado",
+  state.pendingHudDrawAnim
+);
+
+
+  }
+
+if (newDiscardId && oldDiscardId !== newDiscardId) {
+  state.pendingDiscardFlyAnim = {
+    card: pub.discardTop,
+    fromSeat: pub.lastDiscardSeat || pub.currentSeat || null
+  };
+}
+
+state.lixo = pub.discardTop ? [pub.discardTop] : [];
+
+state.table = Array.isArray(pub.tableMelds)
+  ? pub.tableMelds.map(m => ({ cards: m.cards || [] }))
+  : [];
+
+state.deckCount = pub.deckCount ?? 0;
+
+/*----------------------------*/
+  state.roundAnnouncement = String(pub.roundAnnouncement || "");
+  state.roundAnnouncementEndsAt = Number(pub.roundAnnouncementEndsAt) || 0;
+  const nextRoundAnnouncement = String(pub.roundAnnouncement || "");
+  const nextRoundAnnouncementEndsAt = Number(pub.roundAnnouncementEndsAt) || 0;
+
+  const prevRoundAnnouncement = String(state._lastShownRoundAnnouncement || "");
+  const now = Date.now();
+
+  if (
+    nextRoundAnnouncement &&
+    nextRoundAnnouncement !== prevRoundAnnouncement &&
+    nextRoundAnnouncementEndsAt > now
+  ) {
+    state._lastShownRoundAnnouncement = nextRoundAnnouncement;
+  }
+
+  if (!nextRoundAnnouncement) {
+    state._lastShownRoundAnnouncement = "";
+  }
+
+
+  // players
+  const players = [];
+  (pub.seats || []).forEach((p, idx) => {
+    if (!p) return;
+
+    const oldPlayer = state.players?.find(x => x.seat === idx + 1);
+
+    const buyInMesa = state.room?.buyIn ? state.room.buyIn : 0;
+    const mesaStack = buyInMesa * 10;
+    const mesaStackLiquido = mesaStack - buyInMesa;
+
+    players.push({
+      id: idx,
+      seat: idx + 1,
+      name: p.name || `Jogador ${idx + 1}`,
+      avatarUrl: p.avatarUrl || null,
+      chips: typeof p.chips === "number" ? p.chips : 0,
+      tableChips: typeof p.tableChips === "number" ? p.tableChips : mesaStackLiquido,
+
+      hand: oldPlayer?.hand || [],
+
+      jogosBaixados: [],
+      totalPoints: typeof p.totalPoints === "number" ? p.totalPoints : 0,
+      lastRoundPoints: typeof p.lastRoundPoints === "number" ? p.lastRoundPoints : 0,
+      eliminated: !!p.eliminated,
+
+      rebuyCount: typeof p.rebuyCount === "number" ? p.rebuyCount : 0,
+      pendingRebuy: !!p.pendingRebuy,
+      rebuyDeclined: !!p.rebuyDeclined,
+      reentryCount: typeof p.reentryCount === "number" ? p.reentryCount : 0,
+      pendingReentry: !!p.pendingReentry,
+      reentryDeclined: !!p.reentryDeclined,
+    });
+  });
+
+  state.players = players;
+  state.rebuyDecisionUntil = pub.rebuyDecisionUntil || 0;
+  state.reentryDecisionUntil = pub.reentryDecisionUntil || 0;
+  
+  // fim de partida vindo do servidor autoritativo
+  state.matchEnded = !!pub.matchEnded;
+  state.matchWinnerSeat = pub.matchWinnerSeat ?? null;
+// Competição — sincroniza economia e tipo da mesa
+  state.tableType = pub.tableType || "RECREATIONAL";
+  state.competitionGross = Number(pub.competitionGross) || 0;
+  state.competitionOrganizationFee =
+    Number(pub.competitionOrganizationFee) || 0;
+  state.competitionPrizePool =
+    Number(pub.competitionPrizePool) || 0;
+  state.competitionEntriesCount =
+    Number(pub.competitionEntriesCount) || 0;
+  state.competitionReentriesCount =
+    Number(pub.competitionReentriesCount) || 0;
+  state.matchPot = Number(pub.matchPot) || 0;
+  state.pot = state.matchPot;
+  state.houseRakePct = Number(pub.houseRakePct) || 0;
+  state.houseRake = Number(pub.houseRake) || 0;
+  state.winnerPayout = Number(pub.winnerPayout) || 0;
+  state.roundNumber = Number(pub.roundNumber) || 0;
+
+  // 🔥 sincroniza snapshot das mesas para a tela do lobby
+if (state.room?.id) {
+  window.state = window.state || {};
+  window.state.tables = window.state.tables || {};
+
+  const prev = window.state.tables[state.room.id] || {};
+  const prevSeats = Array.isArray(prev.seats) ? prev.seats : [null, null, null, null, null, null];
+
+  const mergedSeats = Array.isArray(pub.seats)
+    ? pub.seats.map((seat, idx) => {
+        if (!seat) return null;
+
+        const oldSeat = prevSeats[idx] || null;
+
+        return {
+          ...oldSeat,
+          ...seat,
+          avatarUrl: seat.avatarUrl || oldSeat?.avatarUrl || null
+        };
+      })
+    : prevSeats;
+
+  window.state.tables[state.room.id] = {
+    ...prev,
+    id: prev.id || state.room.id,
+    name: prev.name,
+    buyIn: prev.buyIn,
+    started: pub.started ?? prev.started ?? false,
+    matchEnded: !!pub.matchEnded,
+    currentSeat: pub.currentSeat ?? prev.currentSeat ?? 1,
+    phase: pub.phase ?? prev.phase ?? "WAITING",
+    seats: mergedSeats,
+
+    seatedCount: Array.isArray(pub.seats)
+      ? pub.seats.filter(Boolean).length
+      : (prev.seatedCount || 0),
+
+    maxSeats: pub.maxSeats ?? prev.maxSeats ?? 10,
+    minPlayersToStart: pub.minPlayersToStart ?? prev.minPlayersToStart ?? 5,
+    startAt: Number(pub.startAt) || 0,
+
+    tableMelds: Array.isArray(pub.tableMelds)
+      ? pub.tableMelds
+      : (prev.tableMelds || []),
+
+    discardTop: pub.discardTop ?? prev.discardTop ?? null,
+    deckCount: pub.deckCount ?? prev.deckCount ?? 0,
+
+    matchPot: Number(pub.matchPot) || 0,
+    roundNumber: Number(pub.roundNumber) || 0,
+
+    // =====================================================
+    // COMPETIÇÃO — ECONOMIA
+    // =====================================================
+    competitionGross:
+      Number(pub.competitionGross ?? prev.competitionGross) || 0,
+
+    competitionOrganizationFee:
+      Number(
+        pub.competitionOrganizationFee ??
+        prev.competitionOrganizationFee
+      ) || 0,
+
+    competitionPrizePool:
+      Number(
+        pub.competitionPrizePool ??
+        prev.competitionPrizePool
+      ) || 0,
+
+    competitionEntriesCount:
+      Number(
+        pub.competitionEntriesCount ??
+        prev.competitionEntriesCount
+      ) || 0,
+
+    competitionReentriesCount:
+      Number(
+        pub.competitionReentriesCount ??
+        prev.competitionReentriesCount
+      ) || 0
+  };
+  // redesenha as mesas imediatamente
+  if (typeof renderTablesScreen === "function") {
+    renderTablesScreen();
+  }
+}
+    // define currentPlayer para render
+  if (!state.spectator && state.mySeat != null) {
+    const myIdx = state.players.findIndex(p => p.seat === state.mySeat);
+    state.currentPlayer = (myIdx >= 0) ? myIdx : 0;
+  } else if (state.currentSeat != null) {
+    const turnIdx = state.players.findIndex(p => p.seat === state.currentSeat);
+    state.currentPlayer = (turnIdx >= 0) ? turnIdx : 0;
+  } else {
+    state.currentPlayer = 0;
+  }
+
+
+     // detectar animação mão -> mesa
+  if (!state.spectator && state.mySeat != null) {
+    // baixar novo jogo
+    if (state.pendingPlayToTable?.cardIds?.length) {
+      state.pendingHandToTableAnim = {
+        cardIds: [...state.pendingPlayToTable.cardIds],
+        cardSnapshots: Array.isArray(state.pendingPlayToTable.cardSnapshots)
+          ? state.pendingPlayToTable.cardSnapshots
+          : [],
+        targetMeldIndex: Array.isArray(state.table) && state.table.length
+          ? state.table.length - 1
+          : null,
+        requestedAt: Date.now()
+      };
+
+      state.pendingPlayToTable = null;
+    }
+
+    // adicionar em jogo da mesa
+    if (state.pendingAddToTable?.cardIds?.length) {
+      state.pendingHandToTableAnim = {
+        cardIds: [...state.pendingAddToTable.cardIds],
+        cardSnapshots: Array.isArray(state.pendingAddToTable.cardSnapshots)
+          ? state.pendingAddToTable.cardSnapshots
+          : [],
+        targetMeldIndex: Number.isInteger(state.pendingAddToTable.meldIndex)
+          ? state.pendingAddToTable.meldIndex
+          : null,
+        requestedAt: Date.now()
+      };
+
+      state.pendingAddToTable = null;
+    }
+  }
+
+  // ✅ só entra no jogo quando a mesa começou E não está em matchEnded
+  if (pub.started && !pub.matchEnded) {
+    showScreen("game");
+    renderAll();
+    playPendingHudDrawAnimation?.();
+    playPendingHandToTableAnimation?.();
+
+  // se a partida acabou, mas estou na tela de mesas, NÃO reabre overlay
+  } else {
+
+    // ESPECTADOR:
+    // mesmo uma mesa vazia precisa ser renderizada,
+    // senão fica visualmente a mesa assistida anteriormente.
+    if (state.spectator) {
+      showScreen("game");
+      renderAll();
+      return;
+    }
+
+    const tables = document.getElementById("tablesScreen");
+    const game = document.getElementById("game");
+
+    const isOnTables =
+      tables &&
+      tables.style.display !== "none" &&
+      (!game || game.style.display === "none");
+
+    if (isOnTables) {
+      state.matchEnded = false;
+      state.canRematch = false;
+      state.matchWinnerSeat = null;
+      state.winnerSeat = null;
+      document.getElementById("endMatchOverlay")?.remove();
+
+      renderTablesScreen();
+    }
+  }
+
+  return;
+}
+
+// 4) state_private
+if (msg.type === "state_private") {
+  const payload = msg.payload || {};
+
+  if (!state.room && state.spectator === false) {
+    return;
+  }
+
+  const { seat, hand } = payload;
+
+  // Saldo em R$ — modo Competição
+  state.cashBalance = Number(payload.cashBalance) || 0;
+
+  state.canRematch = !!payload.canRematch;
+
+  const fixedHand = Array.isArray(hand)
+    ? hand.map(c => (c && typeof c === "object" ? { ...c } : c))
+    : [];
+
+  const idx = state.players.findIndex(p => p.seat === seat);
+  const oldHand = idx >= 0 && Array.isArray(state.players[idx]?.hand)
+    ? state.players[idx].hand.map(c => ({ ...c }))
+    : [];
+
+  if (idx >= 0) {
+    state.players[idx].hand = applyHandPresentationOrder(fixedHand);
+  }
+
+  // detecta compra do monte confirmada pelo servidor
+  if (
+    !state.spectator &&
+    state.mySeat === seat &&
+    state.pendingDrawFromDeck &&
+    idx >= 0
+  ) {
+    const beforeIds = new Set(
+      Array.isArray(state.pendingDrawFromDeck.handBeforeIds)
+        ? state.pendingDrawFromDeck.handBeforeIds.map(String)
+        : oldHand.map(c => String(c.id))
+    );
+
+    const newCard = state.players[idx].hand.find(c => !beforeIds.has(String(c.id)));
+
+    if (newCard) {
+      state.pendingDeckToHandAnim = {
+        cardId: String(newCard.id),
+        requestedAt: Date.now()
+      };
+    }
+
+    state.pendingDrawFromDeck = null;
+  }
+
+    // detecta compra do lixo confirmada pelo servidor
+  if (
+    !state.spectator &&
+    state.mySeat === seat &&
+    state.pendingDrawFromDiscard &&
+    idx >= 0
+  ) {
+    const beforeIds = new Set(
+      Array.isArray(state.pendingDrawFromDiscard.handBeforeIds)
+        ? state.pendingDrawFromDiscard.handBeforeIds.map(String)
+        : oldHand.map(c => String(c.id))
+    );
+
+    const newCard = state.players[idx].hand.find(c => !beforeIds.has(String(c.id)));
+
+    if (newCard) {
+      state.pendingDiscardToHandAnim = {
+        cardId: String(newCard.id),
+        requestedAt: Date.now()
+      };
+    }
+
+    state.pendingDrawFromDiscard = null;
+  }
+
+
+  // garante que jogador vê a própria mão
+  if (!state.spectator && state.mySeat != null) {
+    const myIdx = state.players.findIndex(p => p.seat === state.mySeat);
+    if (myIdx >= 0) state.currentPlayer = myIdx;
+  }
+
+  state.selectedCards = [];
+
+  renderAll();
+  playPendingDrawAnimation?.();
+  playPendingDiscardDrawAnimation?.();
+  return;
+  }
+
+//5) Error
+if (msg.type === "error") {
+  const serverMsg =
+    msg?.payload?.message ??
+    msg?.message ??
+    "Erro no servidor.";
+
+  // limpa pendências visuais de ação rejeitada
+  state.pendingPlayToTable = null;
+  state.pendingAddToTable = null;
+  state.pendingHandToTableAnim = null;
+
+  // feedback visual da jogada inválida
+  try {
+    const selectedIds = Array.isArray(state.selectedCards)
+      ? [...state.selectedCards]
+      : [];
+
+    window.flashInvalidPlay?.(selectedIds);
+  } catch {}
+
+  showGameNotice(serverMsg, "warn");
+  return;
+}
+
+  });
+
+}
+
+// Envia ação para o servidor (todas as jogadas passam por aqui)*/
+
+export function wsSendAction(action) {
+  if (!socket || socket.readyState !== 1) return false;
+  if (!state.room?.id) return false;
+
+  const actionWithSeq = {
+    ...(action || {}),
+    seq: nextActionSeq++
+  };
+  socket.send(JSON.stringify({
+    type: "action",
+    payload: { tableId: state.room.id, action: actionWithSeq }
+  }));
+
+  return true;
+}
+
+window.wsSendAction = wsSendAction;
+
+// =============================
+// RENDER GERAL
+// =============================
+export function renderAll() {
+
+  renderPlayerInfo();
+  renderHand();
+  renderTable();
+  renderMonte();
+  renderLixo();
+  renderPot();
+  renderScoreboard();
+  updateSpectatorUI();
+  renderNextPlayerButton();
+
+
+  const gameEl = document.getElementById("game");
+  const gameVisible = !!gameEl && gameEl.style.display !== "none";
+  const hasAnyHand =
+    Array.isArray(state.players) &&
+    state.players.some(p => Array.isArray(p?.hand) && p.hand.length > 0);
+
+  // só inicia timer quando a partida começou de verdade
+    if (
+    state.started &&
+    gameVisible &&
+    hasAnyHand &&
+    !state.matchEnded &&
+    state.faseTurno !== "DEALING"
+  ) {
+    startTurnTimer();
+  } else {
+    stopTurnTimer();
+  }
+
+  renderEndMatchOverlay();
+
+  if (state.matchEnded) {
+    document.getElementById("rebuyOverlay")?.remove();
+    document.getElementById("reentryOverlay")?.remove();
+    document.getElementById("rebuy-box")?.remove();
+
+    return;
+  }
+
+  renderRoundInfo();
+  renderDealOverlay?.();
+  renderRebuyOverlay();
+  renderReentryOverlay();
+}
+
+window.renderAll = renderAll;
+
+
+function formatBR(n) {
+  return Number(n).toLocaleString("pt-BR");
+}
+
+
+let rebuyUiTimer = null;
+
+
+function getMyPlayer() {
+  if (!Array.isArray(state.players) || state.mySeat == null) return null;
+  return state.players.find(p => p && p.seat === state.mySeat) || null;
+}
+
+function stopRebuyUiTimer() {
+  if (rebuyUiTimer) {
+    clearTimeout(rebuyUiTimer);
+    rebuyUiTimer = null;
+  }
+}
+
+/* revanche*/
+
+// =============================
+// FIM DE PARTIDA: REVANCHE / VOLTAR ÀS MESAS
+// =============================
+function stopTurnTimer() {
+  try {
+    if (state.turnTimerId) clearInterval(state.turnTimerId);
+  } catch {}
+  state.turnTimerId = null;
+  state.turnOwnerId = null;
+  state.turnSecondsLeft = 0;
+  state.turnTimerToken = (Number(state.turnTimerToken) || 0) + 1;
+}
+
+function resetMatchState({ keepPlayers = true } = {}) {
+  // ✅ flags de fim de partida
+  state.partidaEncerrada = false;
+  state.matchFinalized = false;
+  state.vencedor = null;
+
+  // ✅ MUITO IMPORTANTE: destrava o guardião
+  state.rodadaEncerrada = false;
+  state.pontuacaoAplicadaNaRodada = false;
+
+  // ✅ destravas gerais do turno
+  state.jaComprouNoTurno = false;
+  state.turnoTravado = false;
+  state.faseTurno = "COMPRAR";
+
+  // resultados/contabilidade do fim
+  state.houseTake = 0;
+  state.winnerPayout = 0;
+  state.winnerNet = 0;
+
+  // estado de turno/rodada
+  state.currentPlayer = 0;
+  state.selectedCards = [];
+  state.origemCompra = null;
+
+  // limpa outros estados de ação (segurança)
+  state.cartaDoLixo = null;
+  state.baixouComLixo = false;
+  state.obrigacaoBaixar = false;
+
+  // mesa
+  state.table = [];
+  state.lixo = [];
+  state.deck = [];
+
+  // pote
+  state.pot = 0;
+  state.matchPot = 0; // pote único (ante + rebuys)
+
+  // rebuy
+  state.rebuyDecisionUntil = 0;
+
+  // coringa/obrigações
+  state.mustUseJokerId = null;
+  state.pendingJokerSwap = null;
+
+  if (!keepPlayers) {
+    state.players = [];
+  } else {
+    for (const p of state.players || []) {
+      p.eliminated = false;
+      p.hand = [];
+      p.totalPoints = 0;
+      p.roundPoints = [];
+      p.pendingRebuy = false;
+      p.rebuyDeclined = false;
+      p.rebuyCount = 0;
+      p.jogosBaixados = [];
+    }
+  }
+}
+// ✅ Revanche: este jogador mantém o assento e volta para a sala da própria mesa
+window.rematchSameTable = function rematchSameTable() {
+  stopTurnTimer();
+
+  const tableId = state.room?.id;
+
+  if (socket && socket.readyState === 1 && tableId) {
+    socket.send(JSON.stringify({
+      type: "keepSeatForNextMatch",
+      payload: { tableId }
+    }));
+  }
+
+  document.getElementById("endMatchOverlay")?.remove();
+  document.getElementById("rebuyOverlay")?.remove();
+  document.getElementById("rebuy-box")?.remove();
+
+  state.selectedCards = [];
+  state.origemCompra = null;
+  state.cartaDoLixo = null;
+  state.baixouComLixo = false;
+  state.obrigacaoBaixar = false;
+
+  const tables = document.getElementById("tablesScreen");
+  const lobby = document.getElementById("lobby");
+  const game = document.getElementById("game");
+
+  if (tables) tables.style.display = "block";
+  if (lobby) lobby.style.display = "none";
+  if (game) game.style.display = "none";
+
+  try { renderTablesScreen(); } catch {}
+  updateSpectatorUI?.();
+
+  window.scrollTo?.(0, 0);
+};
+
+// ✅ Voltar às mesas: este jogador libera o assento e volta sem lugar marcado
+window.declineRematchSameTable = function declineRematchSameTable() {
+  document.getElementById("endMatchOverlay")?.remove();
+  document.getElementById("rebuyOverlay")?.remove();
+  document.getElementById("rebuy-box")?.remove();
+
+  window.backToTables();
+};
+
+
+function updateLobbyCountdowns() {
+  document.querySelectorAll(".table-start-wrap[data-start-at]").forEach((wrap) => {
+    const startAt = Number(wrap.dataset.startAt) || 0;
+    const label = wrap.querySelector(".table-start-label");
+    const fill = wrap.querySelector(".table-start-bar-fill");
+if (!startAt || !fill) return;
+
+const totalMs = 30000; // 30 segundos
+
+const leftMs = Math.max(0, startAt - Date.now());
+const pct = Math.max(0, Math.min(100, (leftMs / totalMs) * 100));
+
+if (leftMs <= 0) {
+  wrap.style.display = "none";
+  return;
+}
+
+wrap.style.display = "";
+fill.style.width = `${pct}%`;
+  });
+}
+
+setInterval(updateLobbyCountdowns, 200);
+
+
+function focusTable(tableId) {
+  const card = document.querySelector(`.table-card[data-table-id="${tableId}"]`);
+  if (!card) return;
+
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+
+  // destaque rápido (se quiser)
+  card.classList.add("focus");
+  setTimeout(() => card.classList.remove("focus"), 1200);
+}
+
+function openTablesAndFocus(tableId) {
+  // use o mesmo identificador que seu showScreen espera:
+  // no seu arquivo original é "tables"
+  showScreen("tables");
+
+  // dá um tempinho pro layout estabilizar e então foca
+  setTimeout(() => focusTable(tableId), 80);
+}
+
+
+// =============================
+// INICIAR JOGO
+// =============================
+function bindGameControls() {
+  // ✅ Botão Próximo Jogador
+  const btnNext = document.getElementById("nextPlayer");
+  if (btnNext) {
+    btnNext.onclick = async () => {
+      await nextPlayer();
+      renderAll();          // renderAll já chama startTurnTimer(30)
+    };
+  }
+
+  // (opcional) destravar áudio no primeiro toque/clique
+  document.addEventListener("pointerdown", () => {
+  unlockAudio();
+  window.unlockAudioOnce?.();
+  }, { once: true });
+
+
+///Começa aqui///
+ document.getElementById("startGame").onclick = async () => {
+  unlockAudio();
+  window.unlockAudioOnce?.();
+
+  const qtd = Number(document.getElementById("playerCount").value);
+
+  // 1) jogadores
+  initPlayers(qtd);
+
+  // nome do humano
+  const nome = document.getElementById("player-name")?.value?.trim();
+  if (nome) state.players[0].name = nome;
+
+  // garante buy-in/mesa
+  const buyIn = typeof state.room?.buyIn === "number" ? state.room.buyIn : 1000;
+  state.room = { ...(state.room || {}), buyIn };
+
+  // saldo inicial
+  const CHIPS_INICIAIS = Math.max(200000, buyIn * 10);
+  for (const p of state.players) {
+    p.eliminated = false;
+    p.hand = [];
+    p.jogosBaixados = p.jogosBaixados || [];
+    p.jogosBaixados.length = 0;
+
+    if (typeof p.chips !== "number" || p.chips <= 0) p.chips = CHIPS_INICIAIS;
+    p.chips = Math.max(0, p.chips - buyIn);
+  }
+
+  // jogador inicial + fase inicial
+  state.currentPlayer = 0;
+  state.faseTurno = "COMPRAR";
+  state.selectedCards = [];
+
+  // ✅ MOSTRA O JOGO AGORA (mata a tela vazia)
+  showScreen("game");
+  renderAll();
+  bindTableUI();
+
+  // pote/ante
+  state.matchPot = 0;
+  collectAnte();
+
+  // deck novo sempre
+  initDeck();
+  shuffleDeck();
+
+  // agora a animação acontece com a UI já visível
+  await dealInitialCardsAnimated(9);
+
+  // ✅ garante render final
+  renderAll();
+};
+
+
+}
+
+
+let ignoredRoomAfterSpectatorExit = null;
+
+let pendingSpectatorJoinTableId = null;
+
+
+// ✅ Voltar às mesas: sai do modo espectador e volta pra lista de mesas
+window.backToTables = function backToTables() {
+  stopTurnTimer();
+
+  const tableId = state.room?.id;
+
+  ignoredRoomAfterSpectatorExit = tableId;
+
+  // remove overlays visuais
+  document.getElementById("endMatchOverlay")?.remove();
+  document.getElementById("rebuyOverlay")?.remove();
+  document.getElementById("btnExitSpectatorMode")?.remove();
+
+  // avisa o servidor
+  if (tableId && socket && socket.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({
+      type: "leaveTable",
+      payload: {
+        tableId,
+        reason: "exit_spectator"
+      }
+    }));
+  }
+
+  // limpa estado local
+  state.room = null;
+  state.tableId = null;
+  state.selectedSeat = null;
+  state.mySeat = null;
+  state.spectator = false;
+  state.hand = [];
+  state.players = [];
+  state.private = null;
+
+  state.matchEnded = false;
+  state.canRematch = false;
+  state.matchWinnerSeat = null;
+  state.winnerSeat = null;
+  state.rematchVotes = {};
+  state.rematchRequestedBySeat = null;
+
+  resetMatchState({ keepPlayers: false });
+
+  // força sair da tela do jogo
+  document.getElementById("game")?.classList.remove("active");
+  document.getElementById("gameScreen")?.classList.remove("active");
+  document.getElementById("lobby")?.classList.remove("active");
+  document.getElementById("tablesScreen")?.classList.add("active");
+
+  const tables = document.getElementById("tablesScreen");
+  const lobby = document.getElementById("lobby");
+  const game = document.getElementById("game");
+  const gameScreen = document.getElementById("gameScreen");
+
+  if (tables) tables.style.display = "block";
+  if (lobby) lobby.style.display = "none";
+  if (game) game.style.display = "none";
+  if (gameScreen) gameScreen.style.display = "none";
+
+  updateSpectatorUI();
+
+  try {
+    renderTablesScreen();
+  } catch (err) {
+    console.error("[CLIENT] erro ao renderizar mesas:", err);
+  }
+
+  window.scrollTo?.(0, 0);
+};
+
+
+let uiNoticeTimer = null;
+let lastNoticeText = "";
+let lastNoticeAt = 0;
+
+window.showGameNotice = function showGameNotice(message, type = "warn") {
+  if (!message) return;
+
+  const text = String(message).trim();
+  const now = Date.now();
+
+  // evita spam da mesma mensagem em sequência muito curta
+  if (text === lastNoticeText && (now - lastNoticeAt) < 900) {
+    return;
+  }
+
+  lastNoticeText = text;
+  lastNoticeAt = now;
+
+  let el = document.getElementById("gameNotice");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "gameNotice";
+    document.body.appendChild(el);
+  }
+
+  el.textContent = text;
+  el.className = `game-notice show ${type}`;
+
+  clearTimeout(uiNoticeTimer);
+  uiNoticeTimer = setTimeout(() => {
+    el.classList.remove("show");
+  }, 2200);
+};
+
+window.alert = function (message) {
+  window.showGameNotice?.(message || "Aviso.", "warn");
+};
+
+function updateSpectatorUI() {
+  const isSpectator = !!state.spectator;
+
+  // Espectador não possui mão para ordenar
+  const sortPanel = document.getElementById("sortPanel");
+
+  if (sortPanel) {
+    sortPanel.style.display = isSpectator ? "none" : "";
+  }
+
+  // scoreboard
+  const scoreboard = document.getElementById("scoreboard");
+  if (scoreboard) {
+    scoreboard.style.display = isSpectator ? "none" : "";
+  }
+
+  // botão para sair do modo espectador
+  let exitBtn = document.getElementById("btnExitSpectatorMode");
+
+  if (isSpectator) {
+    if (!exitBtn) {
+      exitBtn = document.createElement("button");
+      exitBtn.id = "btnExitSpectatorMode";
+      exitBtn.textContent = "Sair";
+      exitBtn.style.position = "absolute";
+      exitBtn.style.top = "14px";
+      exitBtn.style.left = "14px";
+      exitBtn.style.zIndex = "9999";
+      exitBtn.style.padding = "8px 12px";
+      exitBtn.style.borderRadius = "10px";
+      exitBtn.style.border = "1px solid rgba(255,255,255,0.25)";
+      exitBtn.style.background = "rgba(0,0,0,0.45)";
+      exitBtn.style.color = "#fff";
+      exitBtn.style.cursor = "pointer";
+      exitBtn.onclick = () => window.backToTables?.();
+
+      document.getElementById("game")?.appendChild(exitBtn);
+    }
+
+    exitBtn.style.display = "";
+  } else if (exitBtn) {
+    exitBtn.style.display = "none";
+  }
+
+  // esconder botões de ordenar por valor / naipe
+  document.querySelectorAll('button[onclick*="setHandSort"]').forEach(btn => {
+    btn.style.display = isSpectator ? "none" : "";
+  });
+  // botão mobile para voltar às mesas a partir da tela do jogo
+  const isMobile = true;
+  const isInGame = !!state.room?.id;
+
+  let gameBackBtn = document.getElementById("btnMobileBackToTables");
+
+  if (isMobile && isInGame) {
+    if (!gameBackBtn) {
+      gameBackBtn = document.createElement("button");
+      gameBackBtn.id = "btnMobileBackToTables";
+      const isMobileLayout =
+      window.matchMedia?.("(max-width: 768px)")?.matches;
+
+    gameBackBtn.textContent = isMobileLayout
+      ? "⬅"
+      : "Voltar às mesas";
+
+      if (isMobileLayout) {
+        gameBackBtn.style.minWidth = "42px";
+        gameBackBtn.style.padding = "8px";
+      } else {
+        gameBackBtn.style.minWidth = "";
+        gameBackBtn.style.padding = "8px 12px";
+      }
+
+      gameBackBtn.style.position = "absolute";
+      gameBackBtn.style.top = "14px";
+      gameBackBtn.style.right = "14px";
+      gameBackBtn.style.zIndex = "9999";
+      gameBackBtn.style.padding = "8px 12px";
+      gameBackBtn.style.borderRadius = "10px";
+      gameBackBtn.style.border = "1px solid rgba(255,255,255,0.25)";
+      gameBackBtn.style.background = "rgba(0,0,0,0.45)";
+      gameBackBtn.style.color = "#fff";
+      gameBackBtn.style.fontWeight = "800";
+      gameBackBtn.style.cursor = "pointer";
+
+      gameBackBtn.onclick = () => {
+        window.backToTables?.();
+      };
+
+      document.getElementById("game")?.appendChild(gameBackBtn);
+    }
+
+    gameBackBtn.style.display = "";
+  } else if (gameBackBtn) {
+    gameBackBtn.style.display = "none";
+  }
+
+}
+
+function enforceForcedPasswordChange() {
+  try {
+    const raw = localStorage.getItem("pontinhoAuthUser");
+    if (!raw) return false;
+
+    const user = JSON.parse(raw);
+
+    if (user?.must_reset_password === true || user?.must_reset_password === 1) {
+      window.location.href = "./change-password.html";
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error("Erro ao validar troca obrigatória de senha:", err);
+    return false;
+  }
+}
+
+
+function clearAuthUserAndRedirect(message = "Sua sessão expirou. Faça login novamente.") {
+  try {
+    localStorage.removeItem("pontinhoAuthUser");
+    localStorage.removeItem("pontinhoPlayerName");
+    localStorage.removeItem("pontinhoAvatarUrl");
+  } catch (err) {
+    console.error("Erro ao limpar sessão local:", err);
+  }
+
+  alert(message);
+  window.location.href = "./login.html";
+}
+
+async function validateCurrentSession() {
+  try {
+    if (window.location.hostname !== "localhost") {
+      return true;
+    }
+
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.ok) {
+      localStorage.removeItem("pontinhoAuthUser");
+      return false;
+    }
+
+    return true;
+  } catch (err) {
+    console.warn("Erro ao validar sessão atual:", err);
+    return true; // 🔥 IMPORTANTE
+  }
+}
+
+
+(async function bootstrapApp() {
+  if (enforceForcedPasswordChange()) return;
+
+  const raw = localStorage.getItem("pontinhoAuthUser");
+  if (raw) {
+    const ok = await validateCurrentSession();
+    if (!ok) return;
+  }
+
+  connectWS();
+  renderTablesScreen();
+  showScreen("home");
+
+  setTimeout(() => {
+}, 100);
+  })();
+
+
+// ===== BOTÕES DA HOME =====
+function openTablesFromHome() {
+  state.selectedVariant = "CACHETAO";
+
+  renderTablesScreen();
+
+  document.getElementById("homeScreen").style.display = "none";
+  document.getElementById("game").style.display = "none";
+  document.getElementById("tablesScreen").style.display = "";
+}
+
+function requireAuthOrRedirect() {
+  const user = JSON.parse(localStorage.getItem("pontinhoAuthUser") || "null");
+
+  if (!user) {
+    alert("Você precisa fazer login para jogar.");
+    window.location.href = "./login.html";
+    return false;
+  }
+
+  return true;
+}
+
+
+async function openWalletModal(purpose = "CHIPS") {
+  const walletModal = document.getElementById("walletModal");
+  const walletTitle = document.getElementById("walletTitle");
+  const walletSubtitle = document.getElementById("walletSubtitle");
+  const walletPackages = document.getElementById("walletPackages");
+  const walletMsg = document.getElementById("walletMsg");
+  const walletPixArea = document.getElementById("walletPixArea");
+  const walletPixQrImg = document.getElementById("walletPixQrImg");
+  const walletPixCode = document.getElementById("walletPixCode");
+  const walletCopyPixBtn = document.getElementById("walletCopyPixBtn");
+
+  purpose = String(purpose || "CHIPS").toUpperCase();
+
+  if (purpose !== "CHIPS" && purpose !== "CASH") {
+    purpose = "CHIPS";
+  }
+
+  const isCash = purpose === "CASH";
+
+  // =====================================================
+  // TÍTULO / SUBTÍTULO DO MESMO MODAL
+  // =====================================================
+
+  if (walletTitle) {
+    walletTitle.textContent = isCash
+      ? "Fazer depósito"
+      : "Comprar fichas";
+  }
+
+  if (walletSubtitle) {
+    walletSubtitle.textContent = isCash
+      ? "Escolha um valor e pague via PIX."
+      : "Escolha um pacote e pague via PIX.";
+  }
+
+  walletModal?.classList.remove("hidden");
+
+  if (walletPackages) walletPackages.innerHTML = "";
+  if (walletPixArea) walletPixArea.classList.add("hidden");
+  if (walletPixQrImg) walletPixQrImg.removeAttribute("src");
+  if (walletPixCode) walletPixCode.value = "";
+  if (walletMsg) {
+    walletMsg.textContent = isCash
+      ? "Carregando valores..."
+      : "Carregando pacotes...";
+  }
+
+  try {
+    // =====================================================
+    // CARREGA CHIPS OU CASH
+    // =====================================================
+
+    const res = await fetch(
+      `${API_BASE}/wallet/packages?purpose=${purpose}`,
+      {
+        credentials: "include",
+      }
+    );
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      throw new Error(
+        data.message || "Erro ao carregar pacotes."
+      );
+    }
+
+    if (walletMsg) walletMsg.textContent = "";
+
+    // =====================================================
+    // MONTA OS BOTÕES
+    // =====================================================
+
+    if (isCash) {
+      walletPackages.innerHTML = data.packages.map(p => `
+        <button
+          class="wallet-package-btn"
+          type="button"
+          data-package-id="${p.id}"
+        >
+          <span>${p.label}</span>
+        </button>
+      `).join("");
+    } else {
+      walletPackages.innerHTML = data.packages.map(p => `
+        <button
+          class="wallet-package-btn"
+          type="button"
+          data-package-id="${p.id}"
+        >
+          <span>${p.label}</span>
+          <span>
+            R$ ${(p.priceCents / 100)
+              .toFixed(2)
+              .replace(".", ",")}
+          </span>
+        </button>
+      `).join("");
+    }
+
+    // =====================================================
+    // CLIQUE EM UM PACOTE
+    // =====================================================
+
+    walletPackages
+      .querySelectorAll(".wallet-package-btn")
+      .forEach(btn => {
+
+        btn.onclick = async () => {
+          const packageId = btn.dataset.packageId;
+
+          if (walletMsg) {
+            walletMsg.textContent = "Gerando PIX...";
+          }
+
+          if (walletPixArea) {
+            walletPixArea.classList.add("hidden");
+          }
+
+          try {
+            const depRes = await fetch(
+              `${API_BASE}/wallet/deposit`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                credentials: "include",
+
+                body: JSON.stringify({
+                  packageId,
+                  purpose,
+                }),
+              }
+            );
+
+            const depData = await depRes.json();
+
+            if (!depData.ok) {
+              throw new Error(
+                depData.message || "Erro ao gerar PIX."
+              );
+            }
+
+            // =================================================
+            // MOSTRA QR CODE / COPIA E COLA
+            // =================================================
+
+            if (walletPixQrImg && depData.qrCodeBase64) {
+              walletPixQrImg.src =
+                `data:image/png;base64,${depData.qrCodeBase64}`;
+            }
+
+            if (walletPixCode) {
+              walletPixCode.value =
+                depData.qrCode || "";
+            }
+
+            if (walletPixArea) {
+              walletPixArea.classList.remove("hidden");
+            }
+
+            if (walletMsg) {
+              walletMsg.textContent =
+                `PIX de R$ ${Number(depData.amount)
+                  .toFixed(2)
+                  .replace(".", ",")} gerado.`;
+            }
+
+            const transactionId = depData.transactionId;
+
+            // =================================================
+            // AGUARDA APROVAÇÃO DO PIX
+            // =================================================
+
+            const pollInterval = setInterval(async () => {
+              try {
+                const statusRes = await fetch(
+                  `${API_BASE}/wallet/deposit/${transactionId}/status`,
+                  {
+                    credentials: "include",
+                  }
+                );
+
+                const statusData =
+                  await statusRes.json();
+
+                if (statusData.status === "approved") {
+                  clearInterval(pollInterval);
+
+                  if (walletMsg) {
+                    if (purpose === "CASH") {
+                      walletMsg.textContent =
+                        `Pagamento aprovado. R$ ${Number(
+                          statusData.amount
+                        )
+                          .toFixed(2)
+                          .replace(".", ",")} creditados no saldo.`;
+                    } else {
+                      walletMsg.textContent =
+                        `Pagamento aprovado. ${statusData.chips} fichas creditadas.`;
+                    }
+                  }
+
+                  if (walletPixArea) {
+                    walletPixArea.classList.add("hidden");
+                  }
+
+                  // =============================================
+                  // ATUALIZA FICHAS / SALDO DA HOME
+                  // =============================================
+
+                  try {
+                    const meRes = await fetch(
+                      `${API_BASE}/auth/me`,
+                      {
+                        credentials: "include",
+                      }
+                    );
+
+                    const meData = await meRes.json();
+
+                    if (meData.ok && meData.user) {
+                      localStorage.setItem(
+                        "pontinhoAuthUser",
+                        JSON.stringify(meData.user)
+                      );
+
+                      updateAuthUI(meData.user);
+                    }
+
+                  } catch (err) {
+                    console.error(
+                      "Erro ao atualizar saldo após PIX:",
+                      err
+                    );
+                  }
+                }
+
+              } catch (err) {
+                console.error(err);
+              }
+            }, 5000);
+
+          } catch (err) {
+            if (walletMsg) {
+              walletMsg.textContent = err.message;
+            }
+          }
+        };
+      });
+
+    // =====================================================
+    // COPIAR PIX
+    // =====================================================
+
+    if (walletCopyPixBtn) {
+      walletCopyPixBtn.onclick = async () => {
+        const code = walletPixCode?.value || "";
+
+        if (!code) return;
+
+        try {
+          await navigator.clipboard.writeText(code);
+
+          if (walletMsg) {
+            walletMsg.textContent =
+              "Código PIX copiado.";
+          }
+
+        } catch {
+          walletPixCode?.select();
+          document.execCommand("copy");
+
+          if (walletMsg) {
+            walletMsg.textContent =
+              "Código PIX copiado.";
+          }
+        }
+      };
+    }
+
+  } catch (err) {
+    if (walletMsg) {
+      walletMsg.textContent = err.message;
+    }
+  }
+}
+
+
+function bindHomeButtons() {
+  const btnLogin = document.getElementById("btnLogin");
+  if (btnLogin) {
+    btnLogin.onclick = () => {
+      window.location.href = "./login.html";
+    };
+  }
+
+  const btnSignup = document.getElementById("btnSignup");
+  if (btnSignup) {
+    btnSignup.onclick = () => {
+      window.location.href = "./signup.html";
+    };
+  }
+
+  const btnProfile = document.getElementById("btnTrain");
+  if (btnProfile) {
+    btnProfile.onclick = () => {
+      window.location.href = "./profile.html";
+    };
+  }
+  const btnBuyChips = document.getElementById("btnBuyChips");
+  const btnDeposit = document.getElementById("btnDeposit");
+
+  const loggedUser = localStorage.getItem("pontinhoAuthUser");
+
+  if (btnBuyChips) {
+    btnBuyChips.style.display = loggedUser ? "flex" : "none";
+
+    btnBuyChips.onclick = () => {
+      if (!requireAuthOrRedirect()) return;
+      openWalletModal("CHIPS");
+    };
+  }
+
+  if (btnDeposit) {
+    btnDeposit.style.display = loggedUser ? "flex" : "none";
+
+    btnDeposit.onclick = () => {
+      if (!requireAuthOrRedirect()) return;
+      openWalletModal("CASH");
+    };
+  }
+
+  const walletCloseBtn = document.getElementById("walletCloseBtn");
+  const walletModal = document.getElementById("walletModal");
+
+  if (walletCloseBtn) {
+    walletCloseBtn.onclick = () => {
+      walletModal?.classList.add("hidden");
+    };
+  }
+
+  const btnCachetao = document.getElementById("btnCachetao");
+  if (btnCachetao) {
+    btnCachetao.onclick = () => {
+      if (!requireAuthOrRedirect()) return;
+      openTablesFromHome("CACHETAO");
+    };
+  }
+
+
+  const navHome = document.getElementById("navHome");
+  if (navHome) {
+    navHome.onclick = (e) => {
+      e.preventDefault();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+  }
+
+  const navBuyChips = document.getElementById("navBuyChips");
+  if (navBuyChips) {
+    navBuyChips.onclick = (e) => {
+      e.preventDefault();
+      document.getElementById("btnBuyChips")?.click();
+    };
+  }
+
+  const navDeposit = document.getElementById("navDeposit");
+
+    if (navDeposit) {
+      navDeposit.onclick = (e) => {
+        e.preventDefault();
+        document.getElementById("btnDeposit")?.click();
+      };
+    }
+
+  const navProfile = document.getElementById("navProfile");
+  if (navProfile) {
+    navProfile.onclick = (e) => {
+      e.preventDefault();
+      document.getElementById("btnTrain")?.click();
+    };
+  }
+
+  const navLogout = document.getElementById("navLogout");
+  if (navLogout) {
+    navLogout.onclick = (e) => {
+      e.preventDefault();
+      document.getElementById("btnLogout")?.click();
+    };
+  }
+
+
+  const btnHowToPlay = document.getElementById("btnHowToPlay");
+  if (btnHowToPlay) {
+    btnHowToPlay.onclick = () => {
+      window.location.href = "./how-to-play.html";
+    };
+  }
+
+  const btnContact = document.getElementById("btnContact");
+  if (btnContact) {
+    btnContact.onclick = () => {
+      window.location.href = "./contact.html";
+    };
+  }
+
+  const btnLogout = document.getElementById("btnLogout");
+  if (btnLogout) {
+    btnLogout.onclick = async () => {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: "POST",
+          credentials: "include",
+        });
+      } catch (err) {
+        console.error("Erro no logout:", err);
+      }
+
+      localStorage.removeItem("pontinhoAuthUser");
+      localStorage.removeItem("pontinhoPlayerName");
+      localStorage.removeItem("pontinhoAvatarUrl");
+
+      window.location.href = "./index.html";
+    };
+  }
+}
+
+
+
+
+async function refreshHomeUser() {
+  const homeUserName = document.getElementById("homeUserName");
+  const homeUserBalance = document.getElementById("homeUserBalance");
+  const homeUserCashBalance = document.getElementById("homeUserCashBalance");
+  const homeUserAvatar = document.getElementById("homeUserAvatar");
+
+  const topNav = document.getElementById("topNav");
+
+  const btnLogin = document.getElementById("btnLogin");
+  const btnSignup = document.getElementById("btnSignup");
+  const btnLogout = document.getElementById("btnLogout");
+  const btnSettings = document.getElementById("btnSettings");
+  const btnProfile = document.getElementById("btnTrain");
+  const btnCachetao = document.getElementById("btnCachetao");
+
+  const btnBuyChips = document.getElementById("btnBuyChips");
+  const btnDeposit = document.getElementById("btnDeposit");
+  const walletModal = document.getElementById("walletModal");
+  const walletCloseBtn = document.getElementById("walletCloseBtn");
+
+
+  function setLoggedOutHome() {
+    if (homeUserName) homeUserName.textContent = "Visitante";
+    if (homeUserBalance) homeUserBalance.textContent = "Fichas: —";
+    if (homeUserCashBalance) homeUserCashBalance.textContent = "Saldo: R$ —";
+    if (homeUserAvatar) homeUserAvatar.src = "/assets/avatars/avatar-01.png";
+
+    if (topNav) topNav.style.display = "none";
+
+    if (btnLogin) btnLogin.style.display = "";
+    if (btnSignup) btnSignup.style.display = "";
+
+    if (btnLogout) btnLogout.style.display = "none";
+    if (btnSettings) btnSettings.style.display = "none";
+    if (btnProfile) btnProfile.style.display = "none";
+    if (btnBuyChips) btnBuyChips.style.display = "none";
+    if (btnDeposit) btnDeposit.style.display = "none";
+
+    if (walletCloseBtn) {
+      walletCloseBtn.onclick = () => {
+        walletModal?.classList.add("hidden");
+      };
+    }
+
+    if (btnCachetao) btnCachetao.style.display = "none";
+  }
+
+  function setLoggedInHome(user) {
+    state.user = user;
+    state.currentUser = user;
+    window.currentUser = user;
+
+    if (homeUserName) homeUserName.textContent = user.username || "Usuário";
+
+    if (homeUserBalance) {
+      homeUserBalance.textContent =
+        `Fichas: ${(Number(user.chipsBalance) || 0).toLocaleString("pt-BR")}`;
+    }
+
+    if (homeUserCashBalance) {
+      homeUserCashBalance.textContent =
+        `Saldo: ${(Number(user.cashBalance) || 0).toLocaleString("pt-BR", {
+          style: "currency",
+          currency: "BRL"
+        })}`;
+    }
+
+    if (homeUserAvatar) {
+      homeUserAvatar.src = user.avatarUrl || "/assets/avatars/avatar-01.png";
+    }
+
+    if (topNav) topNav.style.display = "flex";
+
+    if (btnLogin) btnLogin.style.display = "none";
+    if (btnSignup) btnSignup.style.display = "none";
+
+    if (btnLogout) btnLogout.style.display = "";
+    if (btnSettings) btnSettings.style.display = "none";
+    if (btnProfile) btnProfile.style.display = "";
+    if (btnBuyChips) btnBuyChips.style.display = "";
+    if (btnDeposit) btnDeposit.style.display = "";
+    if (btnCachetao) btnCachetao.style.display = "";
+
+  }
+
+  try {
+    const localUser = JSON.parse(localStorage.getItem("pontinhoAuthUser") || "null");
+    if (localUser) {
+      setLoggedInHome(localUser);
+    } else {
+      setLoggedOutHome();
+    }
+  } catch (err) {
+    console.error("Erro lendo usuário local:", err);
+    setLoggedOutHome();
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      method: "GET",
+      credentials: "include",
+    });
+
+    const data = await res.json().catch(() => null);
+
+    if (!res.ok || !data?.ok) {
+      localStorage.removeItem("pontinhoAuthUser");
+      localStorage.removeItem("pontinhoPlayerName");
+      localStorage.removeItem("pontinhoAvatarUrl");
+      setLoggedOutHome();
+      return;
+    }
+
+    const user = data.user;
+
+    localStorage.setItem("pontinhoAuthUser", JSON.stringify(user));
+    localStorage.setItem("pontinhoPlayerName", user.username || "Visitante");
+
+    if (user.avatarUrl) {
+      localStorage.setItem("pontinhoAvatarUrl", user.avatarUrl);
+    } else {
+      localStorage.removeItem("pontinhoAvatarUrl");
+    }
+
+    setLoggedInHome(user);
+  } catch (err) {
+    console.error("Erro ao carregar usuário da home:", err);
+  }
+}
+
+bindGameControls();
+bindHomeButtons();
+refreshHomeUser();
+
+
+function getCardValueForSort(card) {
+  const order = {
+    "A": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "10": 10,
+    "J": 11,
+    "Q": 12,
+    "K": 13
+  };
+
+  return order[card?.valor] || 0;
+}
+
+function applyHandPresentationOrder(hand) {
+  if (!Array.isArray(hand)) return hand;
+
+  // 1) ordenação manual tem prioridade quando handSort está desligado
+  if (!state.handSort && Array.isArray(state.manualHandOrder) && state.manualHandOrder.length) {
+    const byId = new Map(hand.map(card => [String(card.id), card]));
+    const ordered = state.manualHandOrder.map(id => byId.get(String(id))).filter(Boolean);
+    const rest = hand.filter(card => !state.manualHandOrder.includes(String(card.id)));
+    return [...ordered, ...rest];
+  }
+
+  // 2) ordenação por valor
+  if (state.handSort === "value") {
+    return [...hand].sort((a, b) => getCardValueForSort(a) - getCardValueForSort(b));
+  }
+
+  // 3) ordenação por naipe
+  if (state.handSort === "suit") {
+    const suitOrder = {
+      "paus": 0,
+      "copas": 1,
+      "espadas": 2,
+      "ouros": 3,
+      "♣": 0,
+      "♥": 1,
+      "♠": 2,
+      "♦": 3
+    };
+
+    return [...hand].sort((a, b) => {
+      const sa = suitOrder[a?.naipe] ?? 99;
+      const sb = suitOrder[b?.naipe] ?? 99;
+      if (sa !== sb) return sa - sb;
+      return getCardValueForSort(a) - getCardValueForSort(b);
+    });
+  }
+
+  return hand;
+}
+
+window.setHandSort = function(type) {
+  const player = state.players?.[state.currentPlayer];
+  if (!player || !Array.isArray(player.hand)) return;
+
+  // antes de ordenar, salva a ordem atual como "manual"
+  state.manualHandOrder = player.hand.map(card => String(card.id));
+  state.handSort = type;
+
+  if (type === "value") {
+    player.hand.sort((a, b) => getCardValueForSort(a) - getCardValueForSort(b));
+  }
+
+  if (type === "suit") {
+    player.hand.sort((a, b) => {
+      const suitOrder = {
+        "paus": 0,
+        "copas": 1,
+        "espadas": 2,
+        "ouros": 3,
+        "♣": 0,
+        "♥": 1,
+        "♠": 2,
+        "♦": 3
+      };
+
+      const sa = suitOrder[a?.naipe] ?? 99;
+      const sb = suitOrder[b?.naipe] ?? 99;
+
+      if (sa !== sb) return sa - sb;
+      return getCardValueForSort(a) - getCardValueForSort(b);
+    });
+  }
+
+  renderAll();
+};
+
+
+function getLoggedPlayerName() {
+  try {
+    const authUser = JSON.parse(localStorage.getItem("pontinhoAuthUser") || "null");
+    const localName = localStorage.getItem("pontinhoPlayerName") || "";
+
+    const nome =
+      authUser?.username?.trim() ||
+      localName.trim() ||
+      "Visitante";
+
+    return nome;
+  } catch (err) {
+    console.error("Erro ao obter nome do jogador logado:", err);
+    return localStorage.getItem("pontinhoPlayerName")?.trim() || "Visitante";
+  }
+}
+
+
+export function renderTablesScreen() {
+  const tablesScreenEl = document.getElementById("tablesScreen");
+
+  let controls = document.getElementById("tablesVariantSwitch");
+
+
+  const grid = document.getElementById("tablesGrid");
+  if (!grid) return;
+
+  grid.innerHTML = "";
+
+  if (controls) {
+    state.selectedVariant = "CACHETAO";
+
+    if (!state.selectedTableType) {
+      state.selectedTableType = "RECREATIONAL";
+    }
+
+    controls.innerHTML = `
+      <div class="tables-header">
+        <button
+          id="btnBackHomeFromTables"
+          class="tables-back-btn"
+          type="button"
+        >
+          ←
+        </button>
+      </div>
+
+      <div class="tables-tabs-wrapper">
+        <div class="tables-tabs">
+          <button
+            id="btnRecreationalTables"
+            class="tables-tab ${
+              state.selectedTableType === "RECREATIONAL" ? "active" : ""
+            }"
+            type="button"
+          >
+            Mesas Recreativas
+          </button>
+
+          <button
+            id="btnCompetitionTables"
+            class="tables-tab ${
+              state.selectedTableType === "COMPETITION" ? "active" : ""
+            }"
+            type="button"
+          >
+            Mesas Competição
+          </button>
+        </div>
+      </div>
+    `;
+    const btnBackHomeFromTables = document.getElementById("btnBackHomeFromTables");
+    if (btnBackHomeFromTables) {
+      btnBackHomeFromTables.onclick = () => {
+        showScreen("home");
+      };
+    }
+
+    const btnRecreationalTables =
+      document.getElementById("btnRecreationalTables");
+
+    if (btnRecreationalTables) {
+      btnRecreationalTables.onclick = () => {
+        state.selectedTableType = "RECREATIONAL";
+        renderTablesScreen();
+      };
+    }
+
+    const btnCompetitionTables =
+      document.getElementById("btnCompetitionTables");
+
+    if (btnCompetitionTables) {
+      btnCompetitionTables.onclick = () => {
+        state.selectedTableType = "COMPETITION";
+        renderTablesScreen();
+      };
+    }
+
+  }
+
+  let selected = { tableId: null, seat: null };
+  const positions = [
+  "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos7", "pos8", "pos9", "pos10"
+  ];
+
+  const tables = Array.isArray(state.tableList) ? state.tableList : [];
+
+  const selectedVariant = "CACHETAO";
+  state.selectedVariant = "CACHETAO";
+
+  let visibleTables = (tables || []).filter(t => {
+    const liveTable = window.state?.tables?.[t.id];
+
+    const variant = String(
+      t.variant ||
+      liveTable?.variant ||
+      "CACHETAO"
+    ).toUpperCase();
+
+    const tableType = String(
+      t.tableType ||
+      liveTable?.tableType ||
+      "RECREATIONAL"
+    ).toUpperCase();
+
+    return (
+      variant === selectedVariant &&
+      tableType === state.selectedTableType
+    );
+  });
+
+
+  if (
+    state.selectedTableType === "COMPETITION" &&
+    visibleTables.length === 0
+  ) {
+    grid.innerHTML = `
+      <div class="tables-empty-state">
+        Nenhuma competição disponível.
+      </div>
+    `;
+
+    updateLobbyCountdowns();
+    return;
+  }
+
+  visibleTables.forEach((t) => {
+    const card = document.createElement("div");
+    card.className = "table-card";
+    card.dataset.tableId = t.id;
+
+    const liveTable = window.state?.tables?.[t.id] || {};
+
+    const seatedCount = Array.isArray(liveTable.seats)
+      ? liveTable.seats.filter(Boolean).length
+      : 0;
+
+    const maxSeats = Number(liveTable.maxSeats) || 10;
+    const minPlayersToStart = Number(liveTable.minPlayersToStart) || 5;
+    const startAt = Number(liveTable.startAt) || 0;
+
+ let countdownHtml = "";
+
+  const shouldShowTimer =
+  (liveTable.started !== true || liveTable.matchEnded === true) &&
+  seatedCount >= minPlayersToStart &&
+  Number(startAt) > 0;
+
+  if (shouldShowTimer) {
+  const leftMs = Math.max(0, Math.min(30000, startAt - Date.now()));
+
+  countdownHtml = `
+    <div class="table-start-wrap" data-start-at="${startAt}">
+      <div class="table-start-bar">
+        <div
+          class="table-start-bar-fill"
+          style="animation: tableStartShrink ${leftMs}ms linear forwards;"
+        ></div>
+      </div>
+    </div>
+  `;
+}
+
+  if (t.id === "S1") {
+}
+
+    const tableTitle = t.name;
+
+
+    card.innerHTML = `
+      <div class="table-title">${tableTitle}</div>
+
+      <div class="table-visual">
+        <img src="./assets/image/mesa-cachetao.png" alt="${t.name}" onerror="this.style.display='none'">
+
+        <div class="table-center-info">
+          <div class="table-players-count">${seatedCount}/${maxSeats}</div>
+          ${countdownHtml}
+        </div>
+
+        <div class="seats-overlay" data-table="${t.id}"></div>
+      </div>
+
+      <div class="table-value">
+        ${
+          state.selectedTableType === "COMPETITION"
+            ? `
+              <div class="competition-value-info">
+                <strong>
+                  Inscrição: R$ ${Number(
+                    liveTable.entryFee ?? t.entryFee ?? 0
+                  ).toFixed(2).replace(".", ",")}
+                </strong>
+              </div>
+            `
+            : `
+              <span class="chip"></span>
+              <strong>${formatBR((Number(t.buyIn) || 0) * 10)}</strong>
+            `
+        }
+      </div>
+      <div class="table-hint">Clique em um assento vazio para entrar</div>
+
+      <div class="table-actions">
+        <button class="secondary" data-watch="${t.id}">Assistir</button>
+      </div>
+    `;
+
+
+    const seatsEl = card.querySelector(".seats-overlay");
+
+    for (let s = 1; s <= maxSeats; s++) {
+      const seatEl = document.createElement("div");
+      seatEl.className = `seat ${positions[s - 1]}`;
+      seatEl.dataset.seat = s;
+
+      const player = liveTable.seats?.[s - 1] || null;
+
+      if (player) {
+        const inicial = (player.name?.[0] || "?").toUpperCase();
+        const avatarUrl = player.avatarUrl || player.avatar || null;
+
+        seatEl.innerHTML = avatarUrl
+          ? `<img class="seat-avatar-img" src="${avatarUrl}" alt="${player.name || "Jogador"}">`
+          : `<span class="seat-avatar-fallback">${inicial}</span>`;
+
+        seatEl.classList.add("occupied");
+        seatEl.title = player.name || `Jogador ${s}`;
+      } else {
+        seatEl.innerHTML = `<span class="seat-empty-number">${s}</span>`;
+        seatEl.classList.add("empty");
+        seatEl.title = `Assento ${s}`;
+      }
+seatEl.onclick = () => {
+
+  const nome = getLoggedPlayerName();
+  const avatarUrl =
+  localStorage.getItem("pontinhoAvatarUrl") ||  "/assets/avatars/avatar-01.png";
+  const reconnectToken = localStorage.getItem(`buraco_reconnect_${t.id}_${s}`);
+
+  // ✅ se eu já estou sentado nesse assento, saio dele
+  if (state.room?.id === t.id && state.mySeat === s) {
+    socket.send(JSON.stringify({
+      type: "leaveTable",
+      payload: { tableId: t.id }
+    }));
+
+    if (window.state?.tables?.[t.id]?.seats) {
+      window.state.tables[t.id].seats[s - 1] = null;
+    }
+
+    state.mySeat = null;
+    state.room = null;
+    state.spectator = false;
+
+    renderTablesScreen();
+    return;
+  }
+
+const chipsBalance = Number(
+  state.user?.chipsBalance ??
+  state.user?.chips_balance ??
+  state.currentUser?.chipsBalance ??
+  state.currentUser?.chips_balance ??
+  window.currentUser?.chipsBalance ??
+  window.currentUser?.chips_balance ??
+  0
+);
+
+const joinPayload = {
+  tableId: t.id,
+  seat: s,
+  mode: "player",
+  name: nome,
+  reconnectToken,
+  avatarUrl,
+  chipsBalance,
+  userId: state.user?.id || state.currentUser?.id || window.currentUser?.id || null,
+};
+
+// ✅ se o assento está ocupado, só tenta reconectar se eu tiver token salvo dele
+if (player) {
+  if (!reconnectToken) return;
+
+  state.room = {
+    id: t.id,
+    buyIn: t.buyIn,
+    tableType: liveTable.tableType || t.tableType || "RECREATIONAL",
+    entryFee: Number(liveTable.entryFee ?? t.entryFee ?? 0)
+  };
+
+  socket.send(JSON.stringify({
+  type: reconnectToken ? "joinTable" : "joinTableGroup",
+  payload: joinPayload
+  }));
+
+  return;
+}
+
+// ✅ assento vazio: entra normalmente
+  state.room = {
+    id: t.id,
+    buyIn: t.buyIn,
+    tableType: liveTable.tableType || t.tableType || "RECREATIONAL",
+    entryFee: Number(liveTable.entryFee ?? t.entryFee ?? 0)
+  };
+  socket.send(JSON.stringify({
+    type: "joinTableGroup",
+    payload: joinPayload
+  }));
+  };
+
+      seatsEl.appendChild(seatEl);
+    }
+
+
+  const playBtn = card.querySelector(`[data-play="${t.id}"]`);
+  if (playBtn) {
+  playBtn.onclick = () => {
+    showGameNotice("Clique em um assento vazio para entrar na mesa.");
+  };
+  }
+
+    card.querySelector(`[data-watch="${t.id}"]`).onclick = () => {
+      if (!socket || socket.readyState !== WebSocket.OPEN) {
+        showGameNotice("WS ainda não conectou. Atualize a página.");
+        return;
+      }
+
+      const nome = getLoggedPlayerName();
+
+      // ✅ não assume a mesa antes do servidor confirmar
+      pendingSpectatorJoinTableId = t.id;
+      ignoredRoomAfterSpectatorExit = null;
+
+      socket.send(JSON.stringify({
+        type: "joinSpectatorTableGroup",
+        payload: { tableId: t.id, mode: "spectator", name: nome }
+      }));
+    };
+
+    grid.appendChild(card);
+  });
+
+  updateLobbyCountdowns();
+}
+
+// deixa acessível para onclick no HTML (e evita o erro)
+window.renderTablesScreen = renderTablesScreen;

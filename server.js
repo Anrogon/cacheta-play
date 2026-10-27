@@ -1,7 +1,7 @@
 require("dotenv").config();
 
 const jwt = require("jsonwebtoken");
-const pool = require("./cachetao/server/config/db");
+const pool = require("./cacheta/server/config/db");
 
 const express = require("express");
 const http = require("http");
@@ -2978,7 +2978,7 @@ wss.on("close", () => {
 });
 
 const PORT = Number(process.env.PORT) || 3000;
-app.use(express.static("cachetao"));
+app.use(express.static("cacheta"));
 
 function getCookieFromHeader(cookieHeader, name) {
   if (!cookieHeader) return null;

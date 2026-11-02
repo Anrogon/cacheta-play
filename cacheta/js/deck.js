@@ -23,7 +23,7 @@ export function initDeck() {
   state.deck = [];
   cardIdCounter = 0;
 
-  // Cachetão Pro utiliza dois baralhos comuns,
+  // Cacheta Play utiliza dois baralhos comuns,
   // sem coringas impressos.
   for (let deckIndex = 0; deckIndex < 2; deckIndex++) {
     for (const naipe of NAIPES) {

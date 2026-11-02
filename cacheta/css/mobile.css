@@ -329,17 +329,17 @@
 
   .mobile-seat.pos1 {  left: 50%;  top: 92%;  transform: translate(-50%, -50%);}
 
-  .mobile-seat.pos2 {  left: 15%;  top: 92%;  transform: translate(-50%, -50%);}
-  .mobile-seat.pos3 {  left: 15%;  top: 70%;  transform: translate(-50%, -50%);}
-  .mobile-seat.pos4 {  left: 15%;  top: 40%;  transform: translate(-50%, -50%);}
-  .mobile-seat.pos5 {  left: 15%;  top: 12%;  transform: translate(-50%, -50%);}
+  
+  .mobile-seat.pos2 {  left: 15%;  top: 70%;  transform: translate(-50%, -50%);}
+  .mobile-seat.pos3 {  left: 15%;  top: 40%;  transform: translate(-50%, -50%);}
+  
 
-  .mobile-seat.pos6 {  left: 50%;  top: 12%;  transform: translate(-50%, -50%);}
+  .mobile-seat.pos4 {  left: 50%;  top: 12%;  transform: translate(-50%, -50%);}
 
-  .mobile-seat.pos7 {  left: 85%;  top: 12%;  transform: translate(-50%, -50%);}
-  .mobile-seat.pos8 {  left: 85%;  top: 70%;  transform: translate(-50%, -50%);}
-  .mobile-seat.pos9 {  left: 85%;  top: 40%;  transform: translate(-50%, -50%);}
-  .mobile-seat.pos10 {  left: 85%;  top: 92%;  transform: translate(-50%, -50%);}
+  
+  .mobile-seat.pos5 {  left: 85%;  top: 70%;  transform: translate(-50%, -50%);}
+  .mobile-seat.pos6 {  left: 85%;  top: 40%;  transform: translate(-50%, -50%);}
+  
 
 
 

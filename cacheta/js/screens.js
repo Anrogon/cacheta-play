@@ -15,7 +15,7 @@ const HOME_STATUS_FEED = [
   "🃏 É permitido usar dois coringas no mesmo jogo.",
   "👏 Para bater, selecione as cartas e forme todos os jogos válidos.",
   "⚪ Correr faz parte da estratégia e custa apenas 1 ponto.",
-  "⚔ Jogadores com 1 ponto entram automaticamente na Marra."
+
 ];
 
 function ensureHomeStatusFeed() {

@@ -8,16 +8,12 @@ import {
   addCardToTableGame,
   onClickLixo,
   reorderHandByIds,
-  requestRebuy,
   swapJokerOnTable,
   jogarComAVira,
   toggleSelectVira,
   requestCancelCrazyBatidaAttempt,
   requestStartCrazyBatidaAttempt,
   requestStartBatidaComViraAttempt,
-  requestReentry,
-  declineReentry,
-  declineRebuy
 } from "./actions.js";
 
 import { state, currentPlayer } from "./state.js";
@@ -46,9 +42,8 @@ export function renderPlayerInfo() {
     const linhas = state.players.map((pl, idx) => {
     const pts = typeof pl.totalPoints === "number" ? pl.totalPoints : 0;
     const vez = idx === state.currentPlayer ? "👉 " : "";
-    const morto = pl.eliminated ? " ☠️" : "";
     const offline = pl.disconnected ? " (Offline)" : "";
-    return `${vez}${pl.name}${offline}: ${pts} pts${morto}`;
+    return `${vez}${pl.name}${offline}: ${pts} pts`;
   });
 
   el.innerText = linhas.join(" | ");
@@ -842,7 +837,7 @@ export function renderTable() {
   }
 
 // =============================
-// CACHETÃO PRO - VIRA / CORINGA / POTE
+// Cacheta Play - VIRA / CORINGA / POTE
 // =============================
 const viraCardEl = document.getElementById("vira-card");
 const viraJokerEl = document.getElementById("vira-joker");
@@ -1357,12 +1352,7 @@ function getCrazyBatidaUi() {
 
   const estaParticipandoDaRodada =
     !!meuPlayer &&
-    !meuPlayer.eliminated &&
-    !meuPlayer.passouRodada &&
-    (
-      meuPlayer.participando === true ||
-      state.phase === "COMPRAR"
-    );
+    state.phase === "COMPRAR";
 
   const possoBaterComVira =
     !active &&
@@ -1382,8 +1372,7 @@ function getCrazyBatidaUi() {
     };
   }
 
-  // Mesmo com outro tentando, o primeiro comprador
-  // ainda mantém a prioridade.
+  // Mesmo com outro tentando, o primeiro comprador ainda mantém a prioridade.
   if (iHavePriority) {
     return {
       show: true,
@@ -1462,7 +1451,8 @@ export function renderScoreboard() {
   const nomeBase = pl.name || "Jogador";
   const nome = pl.disconnected ? `${nomeBase} (Offline)` : nomeBase;
   const inicial = (nomeBase[0] || "?").toUpperCase();
-  const vidas = typeof pl.vidas === "number" ? pl.vidas : 10;
+  // Cacheta Play — pontuação acumulada
+const pontos = Number(pl.totalPoints) || 0;
   const buyIn = typeof state.room?.buyIn === "number" ? state.room.buyIn : null;
   const chips = typeof pl.tableChips === "number"
   ? pl.tableChips
@@ -1471,10 +1461,10 @@ export function renderScoreboard() {
   const mesaValor = buyIn ? buyIn * 10 : null;
   const mesaTitulo = mesaValor ? `Mesa: ${mesaValor.toLocaleString("pt-BR")}` : "Mesa: —";
 
-  const ante = typeof state.room?.ante === "number"
+  /*const ante = typeof state.room?.ante === "number"
     ? state.room.ante
     : (buyIn ? Math.ceil(buyIn / 2) : 0);
-
+*/
   const avatarHtml = pl.avatarUrl
     ? `<img src="${pl.avatarUrl}" alt="avatar">`
     : `<span>${inicial}</span>`;
@@ -1494,20 +1484,6 @@ export function renderScoreboard() {
   el.classList.toggle("sb-open", isOpen);
 
  const batiUi = getCrazyBatidaUi();
-
-  const podeDecidirRodada =
-  state.phase === "DECISAO_PARTICIPAR" &&
-  Number(state.currentSeat) === Number(state.mySeat);
-
-  const jaDecidiuRodada =
-  !!pl.participando ||
-  !!pl.passouRodada;
-
-  const estaNaMarra =
-  !!pl.marra ||
-  !!pl.naMarra ||
-  Number(pl.vidas ?? pl.totalPoints ?? 0) === 1;
-
 
   const podeJogarComVira =
   !!(
@@ -1556,31 +1532,7 @@ el.innerHTML = `
       <div class="sb-sub sb-sub-desktop">
         <div class="sb-sub-row">
           <span class="sb-pill">Fichas: ${chips.toLocaleString("pt-BR")}</span>
-          <span class="sb-pill">Pontos: ${vidas}</span>
-        </div>
-
-        <div class="sb-sub-row">
-          ${state.phase === "DECISAO_PARTICIPAR" && !jaDecidiuRodada ? `
-          ${estaNaMarra ? `
-            <button
-              type="button"
-              class="sb-pill sb-cachetao-marra-btn sb-marra-red ${!podeDecidirRodada ? "is-disabled-ui" : ""}"
-              data-disabled-ui="${podeDecidirRodada ? "0" : "1"}"
-            >MARRA</button>
-          ` : `
-            <button
-              type="button"
-              class="sb-pill sb-cachetao-jogar-btn ${!podeDecidirRodada ? "is-disabled-ui" : ""}"
-              data-disabled-ui="${podeDecidirRodada ? "0" : "1"}"
-            >JOGAR</button>
-
-            <button
-              type="button"
-              class="sb-pill sb-cachetao-correr-btn ${!podeDecidirRodada ? "is-disabled-ui" : ""}"
-              data-disabled-ui="${podeDecidirRodada ? "0" : "1"}"
-            >CORRER</button>
-          `}
-        ` : ""}
+          <span class="sb-pill">Pontos: ${pontos}</span>
         </div>
 
         <div class="sb-sub-row">
@@ -1717,60 +1669,6 @@ el.innerHTML = `
       }
     }
   }
-
-const jogarBtn = el.querySelector(".sb-cachetao-jogar-btn");
-
-if (jogarBtn) {
-  jogarBtn.onclick = (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-
-    if (!podeDecidirRodada) {
-      showGameNotice?.("Aguarde sua vez de decidir.");
-      return;
-    }
-
-    window.wsSendAction({
-      type: "jogarRodada"
-    });
-  };
-}
-
-const marraBtn = el.querySelector(".sb-cachetao-marra-btn");
-
-if (marraBtn) {
-  marraBtn.onclick = (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-
-    if (!podeDecidirRodada) {
-      showGameNotice?.("Aguarde sua vez de decidir.");
-      return;
-    }
-
-    window.wsSendAction({
-      type: "marraRodada"
-    });
-  };
-}
-
-const correrBtn = el.querySelector(".sb-cachetao-correr-btn");
-
-if (correrBtn) {
-  correrBtn.onclick = (ev) => {
-    ev.preventDefault();
-    ev.stopPropagation();
-
-    if (!podeDecidirRodada) {
-      showGameNotice?.("Aguarde sua vez de decidir.");
-      return;
-    }
-
-    window.wsSendAction({
-      type: "correrRodada"
-    });
-  };
-}
 
   // =========================================================
   // DOUBLE TAP NA MESA (MOBILE)
@@ -1948,10 +1846,12 @@ function renderMobileTableLayout() {
     root = document.createElement("div");
     root.id = "mobileTableLayout";
     root.innerHTML = `
-      <div class="mobile-table-topbar">
-        <span id="mobileMesaInfo"></span>
-        <span id="mobileAnteInfo"></span>
-      </div>
+        <div class="mobile-table-topbar">
+          <span id="mobileMesaInfo"></span>
+          <!-- CACHETA PLAY — indicador antigo de ante desativado
+          <span id="mobileAnteInfo"></span>
+          -->
+        </div>
 
       <div id="mobileViraBox">
         <div id="mobileViraCard"></div>
@@ -1970,9 +1870,6 @@ function renderMobileTableLayout() {
         >
           JOGAR VIRA
         </button>
-
-        <button id="mobileJogarBtn" type="button">JOGAR</button>
-        <button id="mobileCorrerBtn" type="button">CORRER</button>
       </div>
 
       <div class="mobile-seat-layer">
@@ -1982,10 +1879,6 @@ function renderMobileTableLayout() {
         <div class="mobile-seat pos4" data-seat-pos="4"></div>
         <div class="mobile-seat pos5" data-seat-pos="5"></div>
         <div class="mobile-seat pos6" data-seat-pos="6"></div>
-        <div class="mobile-seat pos7" data-seat-pos="7"></div>
-        <div class="mobile-seat pos8" data-seat-pos="8"></div>
-        <div class="mobile-seat pos9" data-seat-pos="9"></div>
-        <div class="mobile-seat pos10" data-seat-pos="10"></div>
     </div>
     `;
 
@@ -2015,12 +1908,15 @@ const mesaValor = Number(
   (buyInBase * 10)
 );
 
+
+/*
 // ANTE = 5% DO VALOR DA MESA
 const miniAnte = Number(
   tableData?.miniAnte ??
   tableData?.ante ??
   Math.floor(mesaValor * 0.05)
 );
+*/
 
   const mesaEl = document.getElementById("mobileMesaInfo");
   const anteEl = document.getElementById("mobileAnteInfo");
@@ -2037,7 +1933,7 @@ const miniAnte = Number(
   const timerInfo = getMobileTurnTimerInfo(s);
   ensureMobileTurnBarTicker();
 
-    for (let seat = 1; seat <= 10; seat++) {
+    for (let seat = 1; seat <= 6; seat++) {
     const el = root.querySelector(`[data-seat-pos="${seat}"]`);
     const p = players.find(player => Number(player?.seat) === seat);
     console.log("[MOBILE SEAT]", seat, p);
@@ -2118,13 +2014,6 @@ const miniAnte = Number(
 
           </div>
           <div class="mobile-seat-meta">${chips} · ${pts} pts</div>
-          ${(
-          !!p.marra ||
-          !!p.naMarra ||
-          Number(p.vidas ?? p.totalPoints ?? 0) === 1
-        ) ? `
-          <div class="mobile-seat-marra">MARRA</div>
-        ` : ""}
         </div>
       `;
         }
@@ -2380,24 +2269,6 @@ const miniAnte = Number(
       const mobileJogarViraBtn =
         document.getElementById("mobileJogarViraBtn");
 
-      const mobileJogarBtn =
-        document.getElementById("mobileJogarBtn");
-
-      const mobileCorrerBtn =
-        document.getElementById("mobileCorrerBtn");
-
-      const podeDecidirRodada =
-        s.phase === "DECISAO_PARTICIPAR" &&
-        Number(s.currentSeat) === Number(s.mySeat);
-
-      const meuPlayerMobile =
-        (s.seats || []).find(p => p && Number(p.seat) === Number(s.mySeat)) || null;
-
-      const estaNaMarraMobile =
-        !!meuPlayerMobile?.marra ||
-        !!meuPlayerMobile?.naMarra ||
-        Number(meuPlayerMobile?.vidas ?? meuPlayerMobile?.totalPoints ?? 0) === 1;
-
       const faseMobile =
       window.state?.phase ??
       s.phase ??
@@ -2517,55 +2388,6 @@ const miniAnte = Number(
         };
       }
 
-
-      if (mobileJogarBtn) {
-        mobileJogarBtn.style.display =
-          faseMobile === "DECISAO_PARTICIPAR"
-            ? ""
-            : "none";
-
-        mobileJogarBtn.textContent =
-          estaNaMarraMobile
-            ? "MARRA"
-            : "JOGAR";
-
-        mobileJogarBtn.disabled =
-          !podeDecidirRodada;
-        mobileJogarBtn.classList.toggle("is-marra", estaNaMarraMobile);
-        mobileJogarBtn.onclick = (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-
-          if (!podeDecidirRodada) {
-            showGameNotice?.("Aguarde sua vez de decidir.");
-            return;
-          }
-
-          window.wsSendAction({ type: estaNaMarraMobile ? "marraRodada" : "jogarRodada" });
-        };
-      }
-
-      if (mobileCorrerBtn) {
-        mobileCorrerBtn.style.display =
-          faseMobile === "DECISAO_PARTICIPAR" &&
-          !estaNaMarraMobile
-            ? ""
-            : "none";
-
-        mobileCorrerBtn.disabled =
-          !podeDecidirRodada;
-        mobileCorrerBtn.onclick = (ev) => {
-          ev.preventDefault();
-          ev.stopPropagation();
-
-          if (!podeDecidirRodada) {
-            showGameNotice?.("Aguarde sua vez de decidir.");
-            return;
-          }
-
-          window.wsSendAction({ type: "correrRodada" });
-        };
-      }
   moveMobilePotToTableTop();
 }
 
@@ -2598,10 +2420,6 @@ function renderDesktopTableLayout() {
         <div class="desktop-seat pos4" data-seat-pos="4"></div>
         <div class="desktop-seat pos5" data-seat-pos="5"></div>
         <div class="desktop-seat pos6" data-seat-pos="6"></div>
-        <div class="desktop-seat pos7" data-seat-pos="7"></div>
-        <div class="desktop-seat pos8" data-seat-pos="8"></div>
-        <div class="desktop-seat pos9" data-seat-pos="9"></div>
-        <div class="desktop-seat pos10" data-seat-pos="10"></div>
       </div>
     `;
     game.prepend(root);
@@ -2616,7 +2434,7 @@ function renderDesktopTableLayout() {
     ? tableData.seats.filter(Boolean)
     : (Array.isArray(state.players) ? state.players : []);
 
-  for (let seat = 1; seat <= 10; seat++) {
+  for (let seat = 1; seat <= 6; seat++) {
     const el = root.querySelector(`[data-seat-pos="${seat}"]`);
     const p = players.find(player => Number(player?.seat) === seat);
 
@@ -2677,16 +2495,6 @@ function renderDesktopTableLayout() {
         <div class="desktop-offline">
           OFF
         </div>
-      ` : ""}
-
-            ${(
-          !!p.marra ||
-          !!p.naMarra ||
-          Number(p.vidas ?? p.totalPoints ?? 0) === 1
-        ) ? `
-          <div class="desktop-marra">
-            MARRA
-          </div>
       ` : ""}
         <div class="desktop-seat-meta">${chips.toLocaleString("pt-BR")} · ${pts} pts</div>
 
@@ -2903,472 +2711,25 @@ function buildChipStackHTML(potValue) {
   return html;
 }
 
+
 export function renderRebuyOverlay() {
-  const gameEl = document.getElementById("game");
+  document.getElementById("rebuyOverlay")?.remove();
 
-  const tableId = state.room?.id;
-
-  const tableType = String(
-    state.room?.tableType ||
-    window.state?.tables?.[tableId]?.tableType ||
-    "RECREATIONAL"
-  ).toUpperCase();
-
-  if (tableType === "COMPETITION") {
-    state.rebuyDecisionUntil = 0;
-
-    if (window.rebuyOverlayTimer) {
-      clearInterval(window.rebuyOverlayTimer);
-      window.rebuyOverlayTimer = null;
-    }
-
-    document.getElementById("rebuyOverlay")?.remove();
-    return;
+  if (window.rebuyOverlayTimer) {
+    clearInterval(window.rebuyOverlayTimer);
+    window.rebuyOverlayTimer = null;
   }
-
-  if (state.rebuyDecisionUntil && !window.rebuyOverlayTimer) {
-  window.rebuyOverlayTimer = setInterval(() => {
-    if (!state.rebuyDecisionUntil || Date.now() > state.rebuyDecisionUntil) {
-      clearInterval(window.rebuyOverlayTimer);
-      window.rebuyOverlayTimer = null;
-      document.getElementById("rebuyOverlay")?.remove();
-      return;
-    }
-
-    renderRebuyOverlay();
-  }, 1000);
 }
-  if (!gameEl) return;
-  if (state.matchEnded) {
-    document.getElementById("rebuyOverlay")?.remove();
-    return;
-  }
-
-  // só mostra durante a janela
-  if (!state.rebuyDecisionUntil || Date.now() > state.rebuyDecisionUntil) {
-    const ov0 = document.getElementById("rebuyOverlay");
-    if (ov0) ov0.remove();
-    return;
-  }
-
-  const mySeat = Number(state.mySeat || 0);
-
-  const eligible = (state.players || []).filter(pl =>
-    pl &&
-    Number(pl.seat) === mySeat &&
-    pl.eliminated === true &&
-    pl.pendingRebuy !== true &&
-    pl.rebuyDeclined !== true &&
-    (pl.rebuyCount || 0) < 3
-  );
-
-  const waitingRebuyPlayers = (state.players || []).filter(pl =>
-    pl &&
-    pl.eliminated === true &&
-    pl.pendingRebuy !== true &&
-    pl.rebuyDeclined !== true &&
-    (pl.rebuyCount || 0) < 3
-  );
-
-  let overlay = document.getElementById("rebuyOverlay");
-
-  if (!eligible.length) {
-
-    if (!waitingRebuyPlayers.length) {
-      if (overlay) overlay.remove();
-      return;
-    }
-
-    const secondsLeft = Math.max(
-      0,
-      Math.ceil((state.rebuyDecisionUntil - Date.now()) / 1000)
-    );
-
-    if (!overlay) {
-      overlay = document.createElement("div");
-      overlay.id = "rebuyOverlay";
-      overlay.className = "rebuy-overlay";
-      gameEl.appendChild(overlay);
-    }
-
-    overlay.innerHTML = `
-      <div class="rebuy-modal">
-        <div class="rebuy-title">Aguardando Rebuy...</div>
-
-        <div class="rebuy-sub">
-          Próxima rodada em <b>${secondsLeft}</b>s
-        </div>
-      </div>
-    `;
-
-    return;
-  }
-
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "rebuyOverlay";
-    overlay.className = "rebuy-overlay";
-    gameEl.appendChild(overlay);
-  }
-
-  const ativos = (state.players || []).filter(pl =>
-    pl &&
-    !pl.eliminated &&
-    !pl.pendingRebuy
-  );
-
-  const pontosRetorno = ativos.length
-    ? Math.min(
-        ...ativos
-          .map(pl => Number(pl.vidas ?? pl.totalPoints ?? 0))
-          .filter(v => v > 0)
-      )
-    : 1;
-
-  const secondsLeft = Math.max(0, Math.ceil((state.rebuyDecisionUntil - Date.now()) / 1000));
-
-  overlay.innerHTML = `
-    <div class="rebuy-modal">
-      <div class="rebuy-title">Adicionar mais fichas?</div>
-      <div class="rebuy-sub">Você voltará com <b>${pontosRetorno}</b> pontos.</div>
-
-      <div class="rebuy-list">
-        ${eligible.map(pl => {
-          const nome = pl.name || "Jogador";
-          const nextIdx = Math.min((pl.rebuyCount || 0) + 1, 3);
-
-          return `
-            <div class="rebuy-row">
-              <div class="rebuy-left">
-                <div class="rebuy-name">${nome}</div>
-                <div class="rebuy-meta">
-                  Rebuy ${nextIdx}/3 • Volta com ${pontosRetorno} pts
-                </div>
-              </div>
-
-            <div class="rebuy-actions">
-              <button class="rebuy-btn" data-rebuy-id="${pl.id}">
-                Rebuy
-              </button>
-
-              <button class="rebuy-skip" data-decline-id="${pl.id}">
-                Cancelar
-              </button>
-            </div>
-            </div>
-          `;
-        }).join("")}
-      </div>
-
-      <div class="rebuy-foot">
-        Rodada inicia em <b id="rebuyCountdown">${secondsLeft}</b>s
-      </div>
-    </div>
-  `;
-
-  overlay.querySelectorAll("[data-rebuy-id]").forEach(btn => {
-    btn.onclick = () => {
-
-  btn.disabled = true;
-
-  const ok = requestRebuy();
-
-  if (!ok) {
-    btn.disabled = false;
-  } else {
-    btn.textContent = "Aguardando...";
-  }
-
-  if (!ok) window.showGameNotice("Não foi possível pedir rebuy.", "warn");
-  window.renderAll?.();
-  };
-  });
-
-  overlay.querySelectorAll("[data-decline-id]").forEach(btn => {
-  btn.onclick = () => {
-    console.log("[CLIENT] clique no botão Cancelar Rebuy");
-
-    btn.disabled = true;
-
-    if (typeof declineRebuy !== "function") {
-      console.error("[CLIENT] declineRebuy não existe neste escopo");
-      btn.disabled = false;
-      return;
-    }
-
-    const ok = declineRebuy();
-
-    console.log("[CLIENT] resultado declineRebuy:", ok);
-
-    if (!ok) {
-      btn.disabled = false;
-      return;
-    }
-
-    btn.textContent = "Cancelado";
-
-    window.renderAll?.();
-  };
-});
-}
-
-
-// =========================================================
-// 🏆 REENTRADA — COMPETIÇÃO
-// =========================================================
 
 export function renderReentryOverlay() {
-  const gameEl = document.getElementById("game");
-  if (!gameEl) return;
+  document.getElementById("reentryOverlay")?.remove();
 
-  const tableId = state.room?.id;
-
-  const tableType = String(
-    state.room?.tableType ||
-    window.state?.tables?.[tableId]?.tableType ||
-    "RECREATIONAL"
-  ).toUpperCase();
-
-  // Reentrada existe somente em competição
-  if (tableType !== "COMPETITION") {
-    if (window.reentryOverlayTimer) {
-      clearInterval(window.reentryOverlayTimer);
-      window.reentryOverlayTimer = null;
-    }
-
-    document.getElementById("reentryOverlay")?.remove();
-    return;
-  }
-
-  // Atualiza contador durante a janela
-  if (
-    state.reentryDecisionUntil &&
-    !window.reentryOverlayTimer
-  ) {
-    window.reentryOverlayTimer = setInterval(() => {
-      if (
-        !state.reentryDecisionUntil ||
-        Date.now() > state.reentryDecisionUntil
-      ) {
-        clearInterval(window.reentryOverlayTimer);
-        window.reentryOverlayTimer = null;
-
-        document.getElementById("reentryOverlay")?.remove();
-        return;
-      }
-
-      renderReentryOverlay();
-    }, 1000);
-  }
-
-  if (state.matchEnded) {
-    document.getElementById("reentryOverlay")?.remove();
-    return;
-  }
-
-  // Só mostra durante a janela
-  if (
-    !state.reentryDecisionUntil ||
-    Date.now() > state.reentryDecisionUntil
-  ) {
-    document.getElementById("reentryOverlay")?.remove();
-    return;
-  }
-
-  const mySeat = Number(state.mySeat || 0);
-
-  // Jogador deste navegador
-  const me = (state.players || []).find(pl =>
-    pl &&
-    Number(pl.seat) === mySeat
-  );
-
-  let overlay = document.getElementById("reentryOverlay");
-
-  // =====================================================
-  // JOGADOR NÃO É O ELIMINADO QUE PRECISA DECIDIR
-  // =====================================================
-  const canDecide =
-    me &&
-    me.eliminated === true &&
-    me.pendingReentry !== true &&
-    me.reentryDeclined !== true &&
-    (me.reentryCount || 0) < 3;
-
-  if (!canDecide) {
-    if (overlay) {
-      overlay.remove();
-    }
-
-    return;
-  }
-
-  // =====================================================
-  // CALCULA PONTOS DE RETORNO
-  // =====================================================
-  const ativos = (state.players || []).filter(pl =>
-    pl &&
-    !pl.eliminated &&
-    !pl.pendingReentry
-  );
-
-  const vidasValidas = ativos
-    .map(pl => Number(pl.vidas ?? pl.totalPoints ?? 0))
-    .filter(v => v > 0);
-
-  const pontosRetorno = vidasValidas.length
-    ? Math.min(...vidasValidas)
-    : 1;
-
-  const pontosLabel =
-    pontosRetorno === 1
-      ? "pt"
-      : "pts";
-
-  const nextIdx = Math.min(
-    (me.reentryCount || 0) + 1,
-    3
-  );
-
-  const nome = me.name || "Jogador";
-
-  const secondsLeft = Math.max(
-    0,
-    Math.ceil(
-      (state.reentryDecisionUntil - Date.now()) / 1000
-    )
-  );
-
-  const progressPct = Math.max(
-    0,
-    Math.min(
-      100,
-      ((state.reentryDecisionUntil - Date.now()) / 15000) * 100
-    )
-  );
-
-  // =====================================================
-  // CRIA OVERLAY
-  // =====================================================
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "reentryOverlay";
-    overlay.className = "reentry-overlay";
-    gameEl.appendChild(overlay);
-  }
-
-  overlay.innerHTML = `
-    <div class="reentry-modal">
-
-      <div class="reentry-title">
-        Fazer Reentrada?
-      </div>
-
-      <div class="reentry-player-box">
-
-        <div class="reentry-player-name">
-          ${nome}
-        </div>
-
-        <div class="reentry-player-meta">
-          Reentrada ${nextIdx}/3
-          <span class="reentry-dot">•</span>
-          Volta com ${pontosRetorno} ${pontosLabel}
-        </div>
-
-        <div class="reentry-actions">
-
-          <button
-            class="reentry-btn-primary"
-            type="button"
-          >
-            Reentrada
-          </button>
-
-          <button
-            class="reentry-btn-secondary"
-            type="button"
-          >
-            Cancelar
-          </button>
-
-        </div>
-
-      </div>
-
-      <div class="reentry-timer">
-
-        <div class="reentry-timer-track">
-          <div
-            class="reentry-timer-fill"
-            style="width: ${progressPct}%"
-          ></div>
-        </div>
-
-        <div class="reentry-timer-text">
-          Rodada inicia em
-          <b>${secondsLeft}s</b>
-        </div>
-
-      </div>
-
-    </div>
-  `;
-
-  // =====================================================
-  // ACEITAR
-  // =====================================================
-  const btnReentry =
-    overlay.querySelector(".reentry-btn-primary");
-
-  if (btnReentry) {
-    btnReentry.onclick = () => {
-      btnReentry.disabled = true;
-
-      const ok = requestReentry();
-
-      if (!ok) {
-        btnReentry.disabled = false;
-
-        window.showGameNotice?.(
-          "Não foi possível solicitar a Reentrada.",
-          "warn"
-        );
-
-        return;
-      }
-
-      btnReentry.textContent = "Aguardando...";
-    };
-  }
-
-  // =====================================================
-  // CANCELAR
-  // =====================================================
-  const btnDecline =
-    overlay.querySelector(".reentry-btn-secondary");
-
-  if (btnDecline) {
-    btnDecline.onclick = () => {
-      btnDecline.disabled = true;
-
-      const ok = declineReentry();
-
-      if (!ok) {
-        btnDecline.disabled = false;
-
-        window.showGameNotice?.(
-          "Não foi possível cancelar a Reentrada.",
-          "warn"
-        );
-
-        return;
-      }
-
-      btnDecline.textContent = "Cancelado";
-    };
+  if (window.reentryOverlayTimer) {
+    clearInterval(window.reentryOverlayTimer);
+    window.reentryOverlayTimer = null;
   }
 }
+
 
 export function renderEndMatchOverlay() {
   const rootEl = document.body;
@@ -3663,62 +3024,9 @@ export function renderRoundInfo() {
   }
 }
 
+
 export function renderRebuyButton() {
-  let box = document.getElementById("rebuy-box");
-
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "rebuy-box";
-    box.style.position = "absolute";
-    box.style.top = "16px";
-    box.style.right = "16px";
-    box.style.zIndex = "9999";
-    box.style.background = "rgba(0,0,0,0.85)";
-    box.style.color = "#fff";
-    box.style.padding = "12px";
-    box.style.borderRadius = "10px";
-    box.style.display = "none";
-    box.style.minWidth = "180px";
-    box.style.textAlign = "center";
-    document.body.appendChild(box);
-  }
-
-  if (!state || !Array.isArray(state.players)) {
-    box.style.display = "none";
-    return;
-  }
-
-  const me = state.players.find(p => p && p.seat === state.mySeat);
-  const now = Date.now();
-  const end = Number(state.rebuyDecisionUntil || 0);
-
-  // só mostra se eu estiver eliminado e a janela ainda estiver aberta
-  if (!me || !me.eliminated || !end || now > end) {
-    box.style.display = "none";
-    return;
-  }
-
-  const secs = Math.max(0, Math.ceil((end - now) / 1000));
-  const cost = typeof me.rebuyCount === "number"
-    ? 1000 * Math.pow(2, me.rebuyCount || 0)
-    : 1000;
-
-    box.innerHTML = `
-    <div style="font-weight:bold; margin-bottom:8px;">REBUY</div>
-    <div style="margin-bottom:8px;">Você voltará com o menor ponto entre os jogadores ativos.</div>
-    <div style="margin-bottom:8px;">Tempo: ${secs}s</div>
-    <div style="margin-bottom:8px;">Custo: ${cost}</div>
-    <button id="rebuy-yes-btn" style="padding:6px 12px; cursor:pointer;">SIM</button>
-  `;
-
-  box.style.display = "block";
-
-  const btn = document.getElementById("rebuy-yes-btn");
-  if (btn) {
-    btn.onclick = () => {
-      requestRebuy();
-    };
-  }
+  document.getElementById("rebuy-box")?.remove();
 }
 
 

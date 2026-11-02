@@ -4,8 +4,6 @@ import {
   initPlayers,
   nextPlayer,
   unlockAudio,
-  dealInitialCardsAnimated,
-  collectAnte
 } from "./actions.js";
 import {
   renderHand,
@@ -358,7 +356,7 @@ return;
   state.tableId = pub.tableId || state.tableId;
   state.matchPot = Number(pub.matchPot) || 0;
   state.pot = state.matchPot;
-  // Cachetão Pro - Vira / Coringa da rodada
+  // Cacheta Play - Vira / Coringa da rodada
   state.cartaVira = pub.cartaVira || null;
 
   state.viraDisponivelParaJogar =
@@ -453,7 +451,7 @@ if (pub.tableId) {
   state.batidaAnnouncementEndsAt = Number(pub.batidaAnnouncementEndsAt) || 0;
   state.phase = String(pub.phase || "");
 
-// Cachetão Pro - som de embaralhamento antes do duelo
+// Cacheta Play - som de embaralhamento antes do duelo
 if (
   state.phase === "AGUARDANDO_DUELO" &&
   window.lastCachetaoDuelAudioPhase !== "AGUARDANDO_DUELO"
@@ -576,21 +574,12 @@ state.deckCount = pub.deckCount ?? 0;
       avatarUrl: p.avatarUrl || null,
       chips: typeof p.chips === "number" ? p.chips : 0,
       tableChips: typeof p.tableChips === "number" ? p.tableChips : mesaStackLiquido,
-
       hand: oldPlayer?.hand || [],
-
       jogosBaixados: [],
       totalPoints: typeof p.totalPoints === "number" ? p.totalPoints : 0,
       lastRoundPoints: typeof p.lastRoundPoints === "number" ? p.lastRoundPoints : 0,
-      eliminated: !!p.eliminated,
-
-      rebuyCount: typeof p.rebuyCount === "number" ? p.rebuyCount : 0,
-      pendingRebuy: !!p.pendingRebuy,
-      rebuyDeclined: !!p.rebuyDeclined,
-      reentryCount: typeof p.reentryCount === "number" ? p.reentryCount : 0,
-      pendingReentry: !!p.pendingReentry,
-      reentryDeclined: !!p.reentryDeclined,
     });
+
   });
 
   state.players = players;
@@ -655,7 +644,7 @@ if (state.room?.id) {
       ? pub.seats.filter(Boolean).length
       : (prev.seatedCount || 0),
 
-    maxSeats: pub.maxSeats ?? prev.maxSeats ?? 10,
+    maxSeats: pub.maxSeats ?? prev.maxSeats ?? 6,
     minPlayersToStart: pub.minPlayersToStart ?? prev.minPlayersToStart ?? 5,
     startAt: Number(pub.startAt) || 0,
 
@@ -993,20 +982,11 @@ function formatBR(n) {
 }
 
 
-let rebuyUiTimer = null;
-
-
 function getMyPlayer() {
   if (!Array.isArray(state.players) || state.mySeat == null) return null;
   return state.players.find(p => p && p.seat === state.mySeat) || null;
 }
 
-function stopRebuyUiTimer() {
-  if (rebuyUiTimer) {
-    clearTimeout(rebuyUiTimer);
-    rebuyUiTimer = null;
-  }
-}
 
 /* revanche*/
 
@@ -1073,13 +1053,9 @@ function resetMatchState({ keepPlayers = true } = {}) {
     state.players = [];
   } else {
     for (const p of state.players || []) {
-      p.eliminated = false;
       p.hand = [];
       p.totalPoints = 0;
       p.roundPoints = [];
-      p.pendingRebuy = false;
-      p.rebuyDeclined = false;
-      p.rebuyCount = 0;
       p.jogosBaixados = [];
     }
   }
@@ -1195,63 +1171,6 @@ function bindGameControls() {
   unlockAudio();
   window.unlockAudioOnce?.();
   }, { once: true });
-
-
-///Começa aqui///
- document.getElementById("startGame").onclick = async () => {
-  unlockAudio();
-  window.unlockAudioOnce?.();
-
-  const qtd = Number(document.getElementById("playerCount").value);
-
-  // 1) jogadores
-  initPlayers(qtd);
-
-  // nome do humano
-  const nome = document.getElementById("player-name")?.value?.trim();
-  if (nome) state.players[0].name = nome;
-
-  // garante buy-in/mesa
-  const buyIn = typeof state.room?.buyIn === "number" ? state.room.buyIn : 1000;
-  state.room = { ...(state.room || {}), buyIn };
-
-  // saldo inicial
-  const CHIPS_INICIAIS = Math.max(200000, buyIn * 10);
-  for (const p of state.players) {
-    p.eliminated = false;
-    p.hand = [];
-    p.jogosBaixados = p.jogosBaixados || [];
-    p.jogosBaixados.length = 0;
-
-    if (typeof p.chips !== "number" || p.chips <= 0) p.chips = CHIPS_INICIAIS;
-    p.chips = Math.max(0, p.chips - buyIn);
-  }
-
-  // jogador inicial + fase inicial
-  state.currentPlayer = 0;
-  state.faseTurno = "COMPRAR";
-  state.selectedCards = [];
-
-  // ✅ MOSTRA O JOGO AGORA (mata a tela vazia)
-  showScreen("game");
-  renderAll();
-  bindTableUI();
-
-  // pote/ante
-  state.matchPot = 0;
-  collectAnte();
-
-  // deck novo sempre
-  initDeck();
-  shuffleDeck();
-
-  // agora a animação acontece com a UI já visível
-  await dealInitialCardsAnimated(9);
-
-  // ✅ garante render final
-  renderAll();
-};
-
 
 }
 
@@ -2336,7 +2255,7 @@ export function renderTablesScreen() {
 
   let selected = { tableId: null, seat: null };
   const positions = [
-  "pos1", "pos2", "pos3", "pos4", "pos5", "pos6", "pos7", "pos8", "pos9", "pos10"
+  "pos1", "pos2", "pos3", "pos4", "pos5", "pos6"
   ];
 
   const tables = Array.isArray(state.tableList) ? state.tableList : [];
@@ -2391,7 +2310,7 @@ export function renderTablesScreen() {
       ? liveTable.seats.filter(Boolean).length
       : 0;
 
-    const maxSeats = Number(liveTable.maxSeats) || 10;
+    const maxSeats = Number(liveTable.maxSeats) || 6;
     const minPlayersToStart = Number(liveTable.minPlayersToStart) || 5;
     const startAt = Number(liveTable.startAt) || 0;
 

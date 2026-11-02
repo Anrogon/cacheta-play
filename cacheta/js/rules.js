@@ -169,7 +169,7 @@ export function isValidTrinca(cards) {
     return false;
   }
 
-  // Cachetão Pro: trinca com três naipes diferentes.
+  // Cacheta Play: trinca com três naipes diferentes.
   const naipesUnicos = new Set(
     cards.map(card => card.naipe)
   );

@@ -1,7 +1,7 @@
 {
-  "name": "Cachetão Pro",
+  "name": "Cacheta Play",
   "short_name": "Cachetão",
-  "description": "Jogo online de Cachetão Pro",
+  "description": "Jogo online de Cacheta Play",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

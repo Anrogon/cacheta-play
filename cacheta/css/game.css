@@ -243,19 +243,18 @@
       0 0 0 2px rgba(255, 215, 0, 0.30),
       0 0 18px rgba(255, 215, 0, 0.85);
   }
+  
+/*  POSIÇÕES DOS JOGADORES AO REDOR DA MESA MODO GAME DESKTOP */
 
-.desktop-seat.pos1  { left: -1%; top: 80%; transform: translate(-50%, -50%); }
-.desktop-seat.pos2  { left: -2%; top: 56%; transform: translate(-50%, -50%); }
-.desktop-seat.pos3  { left: 4%; top: 32%; transform: translate(-50%, -50%); }
+.desktop-seat.pos1  { left: -2%; top: 60%; transform: translate(-50%, -50%); }
+.desktop-seat.pos2  { left: 4%; top: 32%; transform: translate(-50%, -50%); }
 
-.desktop-seat.pos4  { left: 15%; top: 12%; transform: translate(-50%, -50%); }
-.desktop-seat.pos5  { left: 38%; top: 12%; transform: translate(-50%, -50%); }
-.desktop-seat.pos6  { left: 61%; top: 12%; transform: translate(-50%, -50%); }
-.desktop-seat.pos7  { left: 84%; top: 12%; transform: translate(-50%, -50%); }
+.desktop-seat.pos3  { left: 35%; top: 12%; transform: translate(-50%, -50%); }
 
-.desktop-seat.pos8  { left: 96%; top: 32%; transform: translate(-50%, -50%); }
-.desktop-seat.pos9  { left: 102%; top: 56%; transform: translate(-50%, -50%); }
-.desktop-seat.pos10 { left: 100%; top: 80%; transform: translate(-50%, -50%); }
+.desktop-seat.pos4  { left: 61%; top: 12%; transform: translate(-50%, -50%); }
+
+.desktop-seat.pos5  { left: 96%; top: 32%; transform: translate(-50%, -50%); }
+.desktop-seat.pos6  { left: 102%; top: 60%; transform: translate(-50%, -50%); }
 
 }
 
@@ -286,7 +285,7 @@
 
 
 /* =========================================================
-   CACHETÃO PRO — HUD DESKTOP V2
+   Cacheta Play — HUD DESKTOP V2
 ========================================================= */
 
 @media (min-width: 901px) {

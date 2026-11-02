@@ -66,10 +66,13 @@ function getHandPoints(hand) {
 
 function getAliveSeats(room) {
   const seats = [];
+
   for (let i = 0; i < (room.playersBySeat || []).length; i++) {
-    const p = room.playersBySeat[i];
-    if (p && !p.eliminated) seats.push(i + 1);
+    if (room.playersBySeat[i]) {
+      seats.push(i + 1);
+    }
   }
+
   return seats;
 }
 
@@ -107,9 +110,6 @@ function getBuyIn(room) {
   return Math.floor((Number(room?.stake) || 0) * 0.10);
 }
 
-function getMiniAnte(room) {
-  return Number(room?.miniAnte) || Math.floor((Number(room?.stake) || 0) * 0.05);
-}
 
 function getPointValue(room) {
   return Number(room?.pointValue) || 5;
@@ -186,14 +186,6 @@ function startNewRound(room) {
     return;
   }
 
-  // Cachetão Pro: limpa decisão da rodada anterior
-  for (const p of room.playersBySeat || []) {
-    if (!p) continue;
-
-    p.participando = false;
-    p.passouRodada = false;
-  }
-
   const aliveSeats = getAliveSeats(room);
 
   if (aliveSeats.length <= 1) {
@@ -240,13 +232,6 @@ function startNewRound(room) {
 
   room.batidaAnnouncement = "";
   room.batidaAnnouncementEndsAt = 0;
-
-  // mantém economia antiga por enquanto
-  /*const miniAnteCollected = collectMiniAnte(room);
-  room.lastMiniAnteCollected = miniAnteCollected;*/
-
-  // limpa mesa / obrigações
-  // Cachetão Pro - limpa espera do duelo
   room.cachetaoDuelCountdownDone = false;
   room.tableMelds = [];
   room.discard = [];
@@ -258,24 +243,19 @@ function startNewRound(room) {
   // novo baralho
   room.deck = shuffle(makeDeck());
 
-  // limpa mãos e estados da rodada
+  // Limpa as mãos e os estados da rodada
   for (const p of room.playersBySeat) {
-    if (!p || p.eliminated) continue;
+    if (!p) continue;
 
     p.hand = [];
     p.pendingBatidaAfterDiscard = false;
-
-    // Cachetão Pro
-    p.participando = false;
-    p.passouRodada = false;
-    p.marrou = false;
   }
 
     // distribui 9 cartas para cada sobrevivente
   for (let r = 0; r < 9; r++) {
     for (const seat of aliveSeats) {
       const p = room.playersBySeat[seat - 1];
-      if (!p || p.eliminated) continue;
+      if (!p) continue;
 
       const card = room.deck.pop();
       if (card) p.hand.push(card);
@@ -301,338 +281,28 @@ function startNewRound(room) {
 
     if (!room || room.matchEnded || room.roundEnded) return;
 
-    // Cachetão Pro:
-    // Depois de distribuir, NÃO começa COMPRAR ainda.
-    // Primeiro todos escolhem Participar ou Passar.
-    room.phase = "DECISAO_PARTICIPAR";
+        // Cacheta Play:
+    // Após distribuir, todos participam e começa a compra.
+    room.phase = "COMPRAR";
     room.dealEndsAt = 0;
     room.buyEndsAt = 0;
 
-    // força novo timer para o primeiro jogador decidir
+    // Cacheta Play — disponibiliza a vira em todas as rodadas
+    room.viraDisponivelParaJogar = true;
+    room.primeiroCompradorSeat = room.currentSeat;
+    room.viraEmUsoPorSeat = null;
+
     room._autoTurnSeat = null;
     room.turnEndsAt = 0;
-    room.buyEndsAt = 0;
-
-    autoMarraCachetaoDecision(room);
 
     startTurnClock(room);
 
     if (room?.id) sendState(room.id);
     scheduleAutoTurn(room);
+    
   }, room.dealMs);
 }
 
-
-function tryFinishCachetaoDecision(room) {
-  if (!room || room.phase !== "DECISAO_PARTICIPAR") return;
-
-  const aliveSeats = getAliveSeats(room);
-
-  const allDecided = aliveSeats.every((seat) => {
-    const p = room.playersBySeat?.[seat - 1];
-    return p && (p.participando || p.passouRodada);
-  });
-
-  if (!allDecided) {
-    sendState(room.id);
-    return;
-  }
-
-  const playingSeats = aliveSeats.filter((seat) => {
-    const p = room.playersBySeat?.[seat - 1];
-    return p && p.participando && !p.eliminated;
-  });
-
-  // Quem correu devolve as cartas ao monte e perde 1 ponto
-const deckAntes = room.deck.length;
-let cartasDevolvidas = 0;
-
-for (const seat of aliveSeats) {
-  const p = room.playersBySeat?.[seat - 1];
-  if (!p || p.eliminated) continue;
-
-  if (p.passouRodada) {
-
-    if (Array.isArray(p.hand) && p.hand.length) {
-      cartasDevolvidas += p.hand.length;
-      room.deck.push(...p.hand);
-    }
-
-    p.hand = [];
-    p.jogosBaixados = [];
-    p.pendingBatidaAfterDiscard = false;
-    p.obrigacaoBaixar = false;
-
-    if (p.vidas <= 0) {
-      p.eliminated = true;
-    }
-  }
-}
-
-console.log(
-  `[CACHETAO] Monte: ${deckAntes} -> ${room.deck.length} (+${cartasDevolvidas})`
-);
-
-// Cachetão Pro:
-// quem corre devolve as cartas ao monte,
-// então o monte precisa ser embaralhado antes do duelo.
-if (cartasDevolvidas > 0) {
-  shuffle(room.deck);
-  console.log("[CACHETAO] Monte embaralhado após devolução.");
-}
-
-  
-  // se menos de 2 jogadores decidiram jogar, não há duelo
-
-  
-  // se menos de 2 jogadores decidiram jogar, não há duelo
-  if (playingSeats.length < 2) {
-    room.roundAnnouncement = "Rodada sem duelo. Nova rodada em instantes.";
-    room.roundAnnouncementEndsAt = Date.now() + 1500;
-
-    sendState(room.id);
-
-    setTimeout(() => {
-      startNewRound(room);
-    }, 1500);
-
-    return;
-  }
-
-  if (!room.cachetaoDuelCountdownDone) {
-  room.cachetaoDuelCountdownDone = true;
-
-  clearAutoTurnTimer(room);
-
-  const duelDelayMs = 10000;
-
-  room.phase = "AGUARDANDO_DUELO";
-  room.dealEndsAt = Date.now() + duelDelayMs;
-  room.turnEndsAt = 0;
-  room.buyEndsAt = 0;
-
-  room.roundAnnouncement =
-    "Embaralhando... Duelo começa em instantes.";
-
-  room.roundAnnouncementEndsAt =
-    room.dealEndsAt;
-
-  sendState(room.id);
-
-  setTimeout(() => {
-    if (!room || room.matchEnded || room.roundEnded) return;
-    if (room.phase !== "AGUARDANDO_DUELO") return;
-
-    room.phase = "DECISAO_PARTICIPAR";
-    room.dealEndsAt = 0;
-    room.roundAnnouncement = "";
-    room.roundAnnouncementEndsAt = 0;
-
-    tryFinishCachetaoDecision(room);
-  }, duelDelayMs);
-
-  return;
-}
-
-  room.tableMelds = [];
-  room.discard = [];
-  room.mustUseJokerBySeat = {};
-  room.mustUseDiscardCardBySeat = {};
-  room.roundEnded = false;
-  room.winnerSeat = null;
-
-  // começa no primeiro participante depois do dealer
-  const totalSeats = room.playersBySeat?.length || 10;
-  let current = Number(room.dealerSeat || 0);
-
-  for (let i = 0; i < totalSeats; i++) {
-    current++;
-    if (current > totalSeats) current = 1;
-
-    const p = room.playersBySeat?.[current - 1];
-
-    if (!p) continue;
-    if (p.eliminated) continue;
-    if (!p.participando) continue;
-    if (p.passouRodada) continue;
-
-    room.currentSeat = current;
-    break;
-  }
-
-  room.phase = "COMPRAR";
-  room.dealEndsAt = 0;
-  room.buyEndsAt = 0;
-
-  // Cachetão Pro — jogar com a vira.
-  // Somente o primeiro jogador da fase de compras pode escolher essa opção.
-  room.viraDisponivelParaJogar = true;
-  room.primeiroCompradorSeat = room.currentSeat;
-  room.viraEmUsoPorSeat = null;
-
-  for (const p of room.playersBySeat || []) {
-    if (!p) continue;
-
-    p.jogandoComVira = false;
-    p.viraBaixada = false;
-  }
-
-  room._autoTurnSeat = null;
-  room.turnEndsAt = 0;
-
-  startTurnClock(room);
-
-  if (room?.id) sendState(room.id);
-  scheduleAutoTurn(room);
-}
-
-
-function advanceCachetaoDecisionTurn(room) {
-  if (!room || room.phase !== "DECISAO_PARTICIPAR") return;
-
-  const totalSeats = room.playersBySeat?.length || 10;
-
-  const aliveSeats = getAliveSeats(room);
-
-  const allDecided = aliveSeats.every((seat) => {
-    const p = room.playersBySeat?.[seat - 1];
-    return p && (p.participando || p.passouRodada);
-  });
-
-  if (allDecided) {
-    tryFinishCachetaoDecision(room);
-    return;
-  }
-
-  let current = Number(room.currentSeat || 0);
-
-  for (let i = 0; i < totalSeats; i++) {
-    current++;
-
-    if (current > totalSeats) current = 1;
-
-    const p = room.playersBySeat?.[current - 1];
-
-    if (!p) continue;
-    if (p.eliminated) continue;
-    if (p.participando || p.passouRodada) continue;
-
-    room.currentSeat = current;
-    room.phase = "DECISAO_PARTICIPAR";
-
-    startTurnClock(room);
-
-    sendState(room.id);
-    scheduleAutoTurn(room);
-    return;
-  }
-
-  tryFinishCachetaoDecision(room);
-}
-
-function autoDecideCachetaoParticipation(room) {
-  if (!room || room.phase !== "DECISAO_PARTICIPAR") return;
-
-  const seat = Number(room.currentSeat || 0);
-  const player = room.playersBySeat?.[seat - 1];
-
-  if (!player || player.eliminated) {
-    advanceCachetaoDecisionTurn(room);
-    return;
-  }
-
-  if (player.participando || player.passouRodada) {
-    advanceCachetaoDecisionTurn(room);
-    return;
-  }
-
-  const estaNaMarra =
-    player.marra === true ||
-    player.naMarra === true;
-
-  if (estaNaMarra) {
-    player.participando = true;
-    player.passouRodada = false;
-  } else {
-    player.participando = false;
-    player.passouRodada = true;
-
-    player.vidas = Math.max(0, (Number(player.vidas) || 0) - 1);
-
-    if (player.vidas <= 0) {
-      mandarParaRebuyCachetao(room, player);
-    }
-  }
-
-  advanceCachetaoDecisionTurn(room);
-  tryFinishCachetaoDecision(room);
-  sendState(room.id);
-}
-
-function autoMarraCachetaoDecision(room) {
-  if (!room || room.phase !== "DECISAO_PARTICIPAR") return;
-
-  let changed = false;
-
-  for (const p of room.playersBySeat || []) {
-    if (!p || p.eliminated) continue;
-    if (p.participando || p.passouRodada) continue;
-
-    const estaNaMarra =
-      !!p.marra ||
-      !!p.naMarra ||
-      Number(p.vidas) === 1 ||
-      Number(p.totalPoints) === 1;
-
-    if (estaNaMarra) {
-      p.participando = true;
-      p.passouRodada = false;
-      changed = true;
-    }
-  }
-
-  if (changed) {
-    advanceCachetaoDecisionTurn(room);
-    tryFinishCachetaoDecision(room);
-    sendState(room.id);
-  }
-}
-
-function advanceCachetaoDecisionSeat(room) {
-  if (!room || room.phase !== "DECISAO_PARTICIPAR") return;
-
-  const aliveSeats = getAliveSeats(room);
-  if (!aliveSeats.length) return;
-
-  const allDecided = aliveSeats.every((seat) => {
-    const p = room.playersBySeat?.[seat - 1];
-    return p && (p.participando || p.passouRodada);
-  });
-
-  if (allDecided) {
-    tryFinishCachetaoDecision(room);
-    return;
-  }
-
-  let current = Number(room.currentSeat || aliveSeats[0]);
-
-  for (let i = 0; i < aliveSeats.length; i++) {
-    current++;
-
-    if (current > 10) current = 1;
-
-    const p = room.playersBySeat?.[current - 1];
-
-    if (!p || p.eliminated) continue;
-    if (p.participando || p.passouRodada) continue;
-
-    room.currentSeat = current;
-    sendState(room.id);
-    return;
-  }
-
-  tryFinishCachetaoDecision(room);
-}
 
 function cloneJson(value) {
   return JSON.parse(JSON.stringify(value));
@@ -870,7 +540,7 @@ function dequeueCrazyBatidaClaim(room) {
     if (!seat) continue;
 
     const p = room.playersBySeat?.[seat - 1];
-    if (!p || p.eliminated) continue;
+    if (!p) continue;
 
     return seat;
   }
@@ -981,16 +651,6 @@ function startBatidaComViraAttemptForSeat(
     };
   }
 
-  if (
-    !player.participando ||
-    player.passouRodada ||
-    player.eliminated
-  ) {
-    return {
-      ok: false,
-      msg: "Você não está participando desta rodada."
-    };
-  }
 
   if (!room.cartaVira || room.viraNaMesa === false) {
     return {
@@ -1232,7 +892,8 @@ function revealBatidaThenEndRound(room, winnerSeat, ms = 1800) {
     room.batidaAnnouncement = "";
     room.batidaAnnouncementEndsAt = 0;
 
-    await endRound(room, winnerSeat);
+    // Cacheta Play — BATI sem descarte vale 2 pontos
+    await endRound(room, winnerSeat, 2);
 
     if (room?.id) sendState(room.id);
   }, ms);
@@ -1264,15 +925,10 @@ function handleStartBatidaComViraAttempt(
     };
   }
 
-  if (
-    !player ||
-    !player.participando ||
-    player.passouRodada ||
-    player.eliminated
-  ) {
+  if (!player) {
     return {
       ok: false,
-      msg: "Você não está participando desta rodada."
+      msg: "Você não está sentado nesta mesa."
     };
   }
 
@@ -1526,96 +1182,72 @@ function handleCancelCrazyBatidaAttempt(room, playerSeat) {
   return null;
 }
 
+// =====================================================
+// CACHETA PLAY — MONTE ESGOTADO
+// Rodada sem vencedor e sem alteração na pontuação.
+// =====================================================
 function endRoundByEmptyDeck(room) {
-  if (room.roundEnded) return;
+  if (!room || room.roundEnded || room.matchEnded) return;
 
   room.roundEnded = true;
   room.winnerSeat = null;
-  room.roundAnnouncement = "Baralho acabou! Rodada encerrada por pontos.";
+
+  room.roundAnnouncement =
+    "Baralho acabou! Rodada sem vencedor.";
   room.roundAnnouncementEndsAt = Date.now() + 5000;
 
+  // Encerra qualquer tentativa de BATI em andamento.
+  clearCrazyBatidaAttempt(room, {
+    restoreSnapshot: false,
+    resumeTurn: false
+  });
+
+  room._crazyBatidaSnapshot = null;
+  room.crazyBatidaClaimQueue = [];
+
+  // Interrompe os relógios da rodada.
   clearAutoTurnTimer(room);
   room.turnEndsAt = 0;
   room._autoTurnSeat = null;
   room.buyEndsAt = 0;
 
-  // 1) calcula pontos da rodada para TODOS os jogadores vivos
-  for (let i = 0; i < room.playersBySeat.length; i++) {
-    const p = room.playersBySeat[i];
+  // Nenhum jogador ganha ou perde pontos.
+  for (const p of room.playersBySeat || []) {
     if (!p) continue;
-
-    if (p.eliminated) {
-      p.lastRoundPoints = 0;
-      continue;
-    }
-
-    const pts = getHandPoints(p.hand || []);
-    p.lastRoundPoints = pts;
-    p.totalPoints = (p.totalPoints || 0) + pts;
+    p.lastRoundPoints = 0;
   }
 
-  // 2) não há vencedor da rodada, então não há pagamento por pontos
-  const pointTransfers = [];
-
-  // 3) processa eliminações / rebuy
-  for (let i = 0; i < room.playersBySeat.length; i++) {
-    const p = room.playersBySeat[i];
-    if (!p) continue;
-
-    if (p.totalPoints > 100) {
-      const wasEliminated = !!p.eliminated;
-
-      p.eliminated = true;
-      p.hand = [];
-
-      if (!wasEliminated) {
-        if ((p.rebuyCount || 0) < 3) {
-          if (p.disconnected) {
-            p.pendingRebuy = true;
-            p.rebuyDeclined = false;
-          } else {
-            p.pendingRebuy = false;
-            p.rebuyDeclined = false;
-          }
-        } else {
-          p.pendingRebuy = false;
-          p.rebuyDeclined = true;
-        }
-      }
-    }
+  // Evita agendamentos duplicados.
+  if (room.nextRoundTimeoutId) {
+    clearTimeout(room.nextRoundTimeoutId);
+    room.nextRoundTimeoutId = null;
   }
 
-  // 4) log econômico da rodada
-  pushRoundEconomicLog(
-    room,
-    null,
-    pointTransfers,
-    room.lastMiniAnteCollected || 0,
-    []
-  );
+  // Inicia outra rodada após 15 segundos.
+  room.nextRoundTimeoutId = setTimeout(() => {
+    room.nextRoundTimeoutId = null;
 
-  
-  // 5) abre janela de rebuy/reentrada / próxima rodada
-  if (
-    String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION"
-  ) {
-    scheduleNextRoundWithReentry(room, 10000);
-  } else {
-    scheduleNextRoundWithRebuy(room, 10000);
-  }
+    if (!room.started || room.matchEnded) return;
 
-  // 6) avisa o cliente agora
+    startNewRound(room);
+
+    if (room?.id) sendState(room.id);
+  }, 15000);
+
   if (room?.id) sendState(room.id);
 }
 
-
-async function endRound(room, winnerSeat) {
+async function endRound(room, winnerSeat, pontosBatida = 1) {
   if (room.roundEnded) return;
 
   room.roundEnded = true;
   room.winnerSeat = winnerSeat;
 
-  clearCrazyBatidaAttempt(room, { restoreSnapshot: false, resumeTurn: false });
+  clearCrazyBatidaAttempt(room, {
+    restoreSnapshot: false,
+    resumeTurn: false
+  });
+
   room._crazyBatidaSnapshot = null;
   room.crazyBatidaClaimQueue = [];
 
@@ -1634,83 +1266,57 @@ async function endRound(room, winnerSeat) {
     room._pendingBatidaRevealTimeoutId = null;
   }
 
-  // Cachetão Pro:
-  // Quem jogou e perdeu perde 2 pontos.
-  // Quem correu já perdeu 1 ponto no momento da decisão.
-  // Quem ganhou não perde ponto.
+  // CACHETA PLAY — PONTUAÇÃO POSITIVA
+  const pontos = pontosBatida === 2 ? 2 : 1;
+
   for (let i = 0; i < room.playersBySeat.length; i++) {
     const p = room.playersBySeat[i];
     if (!p) continue;
-    if (p.eliminated) continue;
-
-    const seat = i + 1;
 
     p.lastRoundPoints = 0;
 
-    if (seat === Number(winnerSeat)) {
-      continue;
-    }
-
-    if (p.participando && !p.passouRodada) {
-      p.vidas = Math.max(0, (Number(p.vidas) || 0) - 2);
-      p.totalPoints = p.vidas;
-      p.lastRoundPoints = 2;
-
-    if (p.vidas <= 0) {
-      mandarParaRebuyCachetao(room, p);
-    }
+    if (i + 1 === Number(winnerSeat)) {
+      p.totalPoints = (Number(p.totalPoints) || 0) + pontos;
+      p.lastRoundPoints = pontos;
     }
   }
 
-  // Verifica se a partida terminou
-  const alivePlayers = (room.playersBySeat || []).filter(p => p && !p.eliminated);
+  const vencedor = room.playersBySeat[Number(winnerSeat) - 1];
 
-  if (alivePlayers.length <= 1) {
-  const winner = alivePlayers[0] || null;
+  // Vitória ao atingir 5 pontos
+  if (vencedor && Number(vencedor.totalPoints) >= 5) {
+    room.matchEnded = true;
+    room.matchWinnerSeat = Number(winnerSeat);
 
-  room.matchEnded = true;
-  room.matchWinnerSeat = winner
-    ? room.playersBySeat.indexOf(winner) + 1
-    : winnerSeat;
+    const isCompetition =
+      String(room.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION";
 
-  // limpa estado de rodada/marra antes da revanche
-  for (const p of room.playersBySeat || []) {
-    if (!p) continue;
-
-    p.participando = false;
-    p.passouRodada = false;
-
-    p.marra = false;
-    p.naMarra = false;
-    p.emMarra = false;
-    p.isMarra = false;
-    p.cachetaoMarra = false;
-    p.obrigadoJogar = false;
-  }
-
-  const isCompetition =
-    String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION";
-
-  if (isCompetition) {
-    await finalizeCompetitionMatch(room);
-  } else {
-    finalizeMatchEconomy(room);
-  }
-
-  if (room?.id) sendState(room.id);
-  return;
-  }
-
-    // Cachetão Pro: agenda próxima rodada usando rebuy ou reentrada
-    if (
-      String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION"
-    ) {
-      scheduleNextRoundWithReentry(room, 15000);
+    if (isCompetition) {
+      await finalizeCompetitionMatch(room);
     } else {
-      scheduleNextRoundWithRebuy(room, 15000);
+      finalizeMatchEconomy(room);
     }
 
     if (room?.id) sendState(room.id);
+    return;
+  }
+
+  // Próxima rodada, sem rebuy nem reentrada
+  if (room.nextRoundTimeoutId) {
+    clearTimeout(room.nextRoundTimeoutId);
+  }
+
+  room.nextRoundTimeoutId = setTimeout(() => {
+    room.nextRoundTimeoutId = null;
+
+    if (room.matchEnded) return;
+
+    startNewRound(room);
+
+    if (room?.id) sendState(room.id);
+  }, 7000);
+
+  if (room?.id) sendState(room.id);
 }
 
 function isCrazyBatidaOpenEndedSequence(meld, room, player, idSet) {
@@ -1787,452 +1393,6 @@ function isCrazyBatidaOpenEndedSequence(meld, room, player, idSet) {
 }
 
 
-function hasRebuyChoices(room) {
-
-  const isCompetition =
-    String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION";
-
-  if (isCompetition) return false;
-
-  if (!room.started && room.phase === "WAITING") return false;
-
-  return (room.playersBySeat || []).some(pl =>
-    pl &&
-    pl.eliminated === true &&
-    pl.disconnected !== true &&
-    pl.pendingRebuy !== true &&
-    pl.rebuyDeclined !== true &&
-    (pl.rebuyCount || 0) < 3
-  );
-
-}
-
-function getRebuyCost(room, p) {
-  const ante = typeof room.buyIn === "number" && room.buyIn > 0 ? room.buyIn : 0;
-  const times = Math.pow(2, p.rebuyCount || 0);
-  return ante * times;
-}
-
-
-function getCachetaoRebuyReturnVidas(room) {
-  const vivos = (room.playersBySeat || [])
-    .filter(p => p && !p.eliminated)
-    .map(p => Number(p.vidas ?? p.totalPoints ?? 0))
-    .filter(v => v > 0);
-
-  if (!vivos.length) return 1;
-
-  return Math.min(...vivos);
-}
-
-function todosVivosNaMarra(room) {
-  const vivos = (room.playersBySeat || [])
-    .filter(p => p && !p.eliminated && !p.pendingRebuy);
-
-  if (vivos.length < 2) return false;
-
-  return vivos.every(p =>
-    !!p.marra ||
-    !!p.naMarra ||
-    Number(p.vidas ?? p.totalPoints ?? 0) === 1
-  );
-}
-
-function mandarParaRebuyCachetao(room, player) {
-  if (!room || !player) return;
-
-  player.eliminated = true;
-  player.hand = [];
-  player.jogosBaixados = [];
-
-    // BOT não participa de rebuy.
-  // Quando eliminado, permanece apenas como eliminado
-  // até ser removido da mesa no fim da partida.
-  if (player.isBot === true) {
-    player.pendingRebuy = false;
-    player.rebuyDeclined = true;
-
-    console.log("[BOT] eliminado sem rebuy", {
-      roomId: room.id,
-      name: player.name
-    });
-
-    return;
-  }
-
-  const rebuyCount = Number(player.rebuyCount) || 0;
-  const cost = Number(getRebuyCost(room, player)) || 0;
-  const chips = Number(player.chips) || 0;
-
-  if (
-    rebuyCount < 3 &&
-    cost > 0 &&
-    chips >= cost &&
-    !todosVivosNaMarra(room)
-  ) {
-    player.pendingRebuy = false;
-    player.rebuyDeclined = false;
-    return;
-  }
-
-  player.pendingRebuy = false;
-  player.rebuyDeclined = true;
-}
-
-
-
-function applyPendingRebuys(room) {
-  // Cachetão Pro:
-  // volta com o menor ponto entre os jogadores ativos
-  const active = (room.playersBySeat || [])
-    .filter(pl => pl && !pl.eliminated && !pl.pendingRebuy);
-
-  const minVidas = active.length
-    ? Math.min(...active.map(pl => Number(pl.vidas ?? pl.totalPoints ?? 0)).filter(v => v > 0))
-    : 1;
-
-  const returnVidas = Number.isFinite(minVidas) && minVidas > 0 ? minVidas : 1;
-
-  const appliedRebuys = [];
-
-  for (let i = 0; i < (room.playersBySeat || []).length; i++) {
-    const pl = room.playersBySeat[i];
-    if (!pl || !pl.pendingRebuy) continue;
-
-    if ((pl.rebuyCount || 0) >= 3) {
-      pl.pendingRebuy = false;
-      pl.eliminated = true;
-
-      if (pl.disconnected) {
-        room.playersBySeat[i] = null;
-      }
-
-      continue;
-    }
-
-    const cost = Number(getRebuyCost(room, pl)) || 0;
-
-    pl.chips = Number(pl.chips);
-    if (!Number.isFinite(pl.chips)) pl.chips = 0;
-
-    if (pl.chips < cost || cost <= 0) {
-      pl.pendingRebuy = false;
-      pl.eliminated = true;
-
-      if (pl.disconnected) {
-        room.playersBySeat[i] = null;
-      }
-
-      continue;
-    }
-
-    const rebuyCountBefore = pl.rebuyCount || 0;
-
-    pl.chips -= cost;
-
-    // Cachetão Pro/Pontinho: mantém o saldo da mesa sincronizado para HUD/scoreboard
-    pl.tableChips = Number(pl.tableChips);
-    if (!Number.isFinite(pl.tableChips)) {
-      pl.tableChips = Number(pl.chips) || 0;
-    }
-
-    pl.tableChips = Math.max(0, pl.tableChips - cost);
-
-    room.matchPot = Number(room.matchPot) || 0;
-    room.matchPot += cost;
-
-    pl.eliminated = false;
-    pl.pendingRebuy = false;
-    pl.rebuyDeclined = false;
-    pl.rebuyCount = rebuyCountBefore + 1;
-
-    pl.hand = [];
-    pl.jogosBaixados = [];
-    pl.obrigacaoBaixar = false;
-
-    // Cachetão Pro: volta com o menor ponto entre os ativos
-    pl.vidas = returnVidas;
-    pl.totalPoints = returnVidas;
-
-    pl.marra = returnVidas === 1;
-    pl.naMarra = returnVidas === 1;
-
-    appliedRebuys.push({
-      seat: i + 1,
-      name: pl.name,
-      rebuyCountBefore,
-      rebuyCountAfter: pl.rebuyCount,
-      cost,
-      returnVidas
-    });
-  }
-
-  return appliedRebuys;
-}
-
-
-
-/* Eentrada Competição*/
-
-async function applyPendingReentries(room) {
-  // Somente mesas de competição
-  const isCompetition =
-    String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION";
-
-  if (!isCompetition) return [];
-
-  // Cachetão Pro:
-  // reentrada volta com a menor quantidade de vidas entre os jogadores ativos
-  const active = (room.playersBySeat || [])
-    .filter(pl => pl && !pl.eliminated && !pl.pendingReentry);
-
-  const minVidas = active.length
-    ? Math.min(
-        ...active
-          .map(pl => Number(pl.vidas ?? pl.totalPoints ?? 0))
-          .filter(v => v > 0)
-      )
-    : 1;
-
-  const returnVidas =
-    Number.isFinite(minVidas) && minVidas > 0
-      ? minVidas
-      : 1;
-
-  const appliedReentries = [];
-
-  for (let i = 0; i < (room.playersBySeat || []).length; i++) {
-    const pl = room.playersBySeat[i];
-
-    if (!pl || !pl.pendingReentry) continue;
-
-    if ((pl.reentryCount || 0) >= 3) {
-      pl.pendingReentry = false;
-      pl.eliminated = true;
-      continue;
-    }
-
-    const reentryCountBefore = pl.reentryCount || 0;
-
-    const reentryFee =
-      Number(room.competitionReentryFee ?? room.entryFee) || 0;
-
-    // =====================================================
-    // COMPETIÇÃO — COBRA REENTRADA NO SALDO EM R$
-    // =====================================================
-    if (!pl.userId || reentryFee <= 0) {
-      pl.pendingReentry = false;
-      pl.eliminated = true;
-      continue;
-    }
-
-    let debitResult;
-      let dbClient;
-
-      try {
-        dbClient = await pool.connect();
-
-        await dbClient.query("BEGIN");
-
-        debitResult = await dbClient.query(
-          `
-          UPDATE users
-          SET
-            cash_balance = cash_balance - $1,
-            updated_at = NOW()
-          WHERE id = $2
-            AND cash_balance >= $1
-          RETURNING
-            cash_balance,
-            cash_balance + $1 AS balance_before
-          `,
-          [reentryFee, pl.userId]
-        );
-
-        // Saldo insuficiente:
-        // não registra movimentação e desfaz a transação.
-        if (!debitResult.rows.length) {
-          await dbClient.query("ROLLBACK");
-
-          console.log(
-            "[COMPETITION] Reentrada recusada por saldo insuficiente:",
-            {
-              roomId: room.id,
-              userId: pl.userId,
-              reentryFee
-            }
-          );
-
-          pl.pendingReentry = false;
-          pl.eliminated = true;
-          continue;
-        }
-
-        const balanceBefore =
-          Number(debitResult.rows[0].balance_before) || 0;
-
-        const balanceAfter =
-          Number(debitResult.rows[0].cash_balance) || 0;
-
-        await dbClient.query(
-          `
-          INSERT INTO cash_transactions (
-            user_id,
-            type,
-            status,
-            amount,
-            balance_before,
-            balance_after,
-            reference_type,
-            reference_id,
-            description
-          )
-          VALUES (
-            $1,
-            'COMPETITION_REENTRY',
-            'COMPLETED',
-            $2,
-            $3,
-            $4,
-            'COMPETITION',
-            $5,
-            $6
-          )
-          `,
-          [
-            pl.userId,
-            -reentryFee,
-            balanceBefore,
-            balanceAfter,
-            String(room.matchId || room.id),
-            `Reentrada na competição ${room.id}`
-          ]
-        );
-
-        await dbClient.query("COMMIT");
-
-      } catch (err) {
-        if (dbClient) {
-          try {
-            await dbClient.query("ROLLBACK");
-          } catch (_) {}
-        }
-
-        console.error("[COMPETITION] erro ao cobrar Reentrada:", {
-          roomId: room.id,
-          userId: pl.userId,
-          reentryFee,
-          error: err.message
-        });
-
-        pl.pendingReentry = false;
-        pl.eliminated = true;
-        continue;
-
-      } finally {
-        if (dbClient) {
-          dbClient.release();
-        }
-      }
-
-    const newCashBalance =
-      Number(debitResult.rows[0].cash_balance) || 0;
-
-    // Atualiza também o client conectado em memória.
-    const playerClient = pl.clientId
-      ? clients.get(pl.clientId)
-      : null;
-
-    if (playerClient) {
-      playerClient.cashBalance = newCashBalance;
-    }
-
-    // Registra os R$ 10,00 somente DEPOIS
-    // que o débito foi confirmado no banco.
-    const moneyResult = registerCompetitionMoney(
-      room,
-      reentryFee,
-      "reentry"
-    );
-
-    if (!moneyResult?.ok) {
-      console.error(
-        "[COMPETITION] Reentrada debitada, mas falhou ao registrar economia:",
-        {
-          roomId: room.id,
-          userId: pl.userId,
-          reentryFee
-        }
-      );
-
-      // Segurança financeira:
-      // se o registro econômico falhar depois do débito,
-      // devolve o valor ao jogador.
-      try {
-        const refundResult = await pool.query(
-          `
-          UPDATE users
-          SET
-            cash_balance = cash_balance + $1,
-            updated_at = NOW()
-          WHERE id = $2
-          RETURNING cash_balance
-          `,
-          [reentryFee, pl.userId]
-        );
-
-        if (refundResult.rows.length && playerClient) {
-          playerClient.cashBalance =
-            Number(refundResult.rows[0].cash_balance) || 0;
-        }
-      } catch (refundErr) {
-        console.error("[COMPETITION] ERRO CRÍTICO ao estornar Reentrada:", {
-          roomId: room.id,
-          userId: pl.userId,
-          reentryFee,
-          error: refundErr.message
-        });
-      }
-
-      pl.pendingReentry = false;
-      pl.eliminated = true;
-      continue;
-    }
-
-    pl.eliminated = false;
-    pl.pendingReentry = false;
-    pl.reentryDeclined = false;
-    pl.reentryCount = reentryCountBefore + 1;
-
-    pl.hand = [];
-    pl.jogosBaixados = [];
-    pl.obrigacaoBaixar = false;
-
-    // Retorna com a menor quantidade de vidas entre os sobreviventes
-    pl.vidas = returnVidas;
-    pl.totalPoints = returnVidas;
-
-    // Se retornar com 1 vida, já retorna na Marra
-    pl.marra = returnVidas === 1;
-    pl.naMarra = returnVidas === 1;
-
-    appliedReentries.push({
-      seat: i + 1,
-      name: pl.name,
-      reentryCountBefore,
-      reentryCountAfter: pl.reentryCount,
-      returnVidas,
-      fee: reentryFee,
-      organizationFee: moneyResult.organizationFee,
-      prizeAmount: moneyResult.prizeAmount,
-    });
-  }
-
-  return appliedReentries;
-}
-
-
-
 /* Revanche*/
 
 function resetRoomForRematch(room) {
@@ -2255,7 +1415,6 @@ function resetRoomForRematch(room) {
   room.crazyBatidaBurnedBySeat = {};
   room.roundEnded = false;
   room.winnerSeat = null;
-  room.rebuyDecisionUntil = 0;
 
   room.matchEnded = false;
   room.matchWinnerSeat = null;
@@ -2270,317 +1429,18 @@ function resetRoomForRematch(room) {
 
   for (const p of room.playersBySeat || []) {
     if (!p) continue;
+
     p.nextMatchReady = false;
 
     p.hand = [];
-    p.totalPoints = 10;
-    p.vidas = 10;
+    p.totalPoints = 0;
     p.lastRoundPoints = 0;
     p.pendingBatidaAfterDiscard = false;
 
-    p.eliminated = false;
-    p.pendingRebuy = false;
-    p.rebuyDeclined = false;
-    p.rebuyCount = 0;
-
     p.jogosBaixados = [];
     p.obrigacaoBaixar = false;
-    p.participando = false;
-    p.passouRodada = false;
-    p.decidiuParticipar = false;
-    
-    p.marra = false;
-    p.emMarra = false;
-    p.naMarra = false;
-    p.isMarra = false;
-    p.cachetaoMarra = false;
-    p.obrigadoJogar = false;
-    
   }
   cleanupEmptyRoomInstances();
-}
-
-
-function scheduleNextRoundWithRebuy(room, ms = 20000) {
-  room.rebuyDecisionUntil = 0;
-  room.lastAppliedRebuys = [];
-
-  // Se sobrou apenas 1 jogador vivo, a partida acabou.
-  const alivePlayers = (room.playersBySeat || []).filter(pl => pl && !pl.eliminated);
-
-  if (alivePlayers.length <= 1) {
-    room.rebuyDecisionUntil = 0;
-
-    if (room.nextRoundTimeoutId) {
-      clearTimeout(room.nextRoundTimeoutId);
-      room.nextRoundTimeoutId = null;
-    }
-
-    room.matchEnded = true;
-    room.matchWinnerSeat = room.playersBySeat.indexOf(alivePlayers[0]) + 1;
-
-
-    finalizeMatchEconomy(room);
-    if (room?.id) sendState(room.id);
-    return;
-  }
-
-  // Só conectado precisa de janela de decisão.
-  // Desconectado com rebuy disponível já deve ter sido marcado
-  // com pendingRebuy = true no endRound().
-  const hasConnectedChoices = (room.playersBySeat || []).some(pl =>
-    pl &&
-    pl.eliminated === true &&
-    pl.disconnected !== true &&
-    pl.pendingRebuy !== true &&
-    pl.rebuyDeclined !== true &&
-    (pl.rebuyCount || 0) < 3
-  );
-
-  if (room.nextRoundTimeoutId) {
-    clearTimeout(room.nextRoundTimeoutId);
-    room.nextRoundTimeoutId = null;
-  }
-
-    // Se não há jogador conectado precisando decidir rebuy,
-    // não usa o tempo completo da janela de rebuy.
-    if (!hasConnectedChoices) {
-      room.rebuyDecisionUntil = 0;
-
-      const rebuys = applyPendingRebuys(room);
-      room.lastAppliedRebuys = rebuys;
-
-      // Recalcula vivos após aplicar os rebuys automáticos
-      const aliveAfterRebuy = (room.playersBySeat || []).filter(pl => pl && !pl.eliminated);
-      if (aliveAfterRebuy.length <= 1) {
-        room.matchEnded = true;
-        room.matchWinnerSeat = room.playersBySeat.indexOf(aliveAfterRebuy[0]) + 1;
-
-        finalizeMatchEconomy(room);
-        if (room?.id) sendState(room.id);
-        return;
-      }
-
-      const nextRoundDelayMs = 1000;
-
-      room.nextRoundTimeoutId = setTimeout(() => {
-        room.nextRoundTimeoutId = null;
-        room.rebuyDecisionUntil = 0;
-
-        startNewRound(room);
-        if (room?.id) sendState(room.id);
-      }, nextRoundDelayMs);
-
-      if (room?.id) sendState(room.id);
-      return;
-    }
-
-    room.rebuyDecisionUntil = Date.now() + ms;
-
-    if (room?.id) sendState(room.id);
-
-    room.nextRoundTimeoutId = setTimeout(() => {
-    room.nextRoundTimeoutId = null;
-    room.rebuyDecisionUntil = 0;
-
-    // quem está conectado e não aceitou até o fim = recusou
-    for (const pl of room.playersBySeat || []) {
-      if (!pl) continue;
-
-      if (
-        pl.eliminated === true &&
-        pl.disconnected !== true &&
-        pl.pendingRebuy !== true &&
-        (pl.rebuyCount || 0) < 3
-      ) {
-        pl.rebuyDeclined = true;
-      }
-    }
-
-    const rebuys = applyPendingRebuys(room);
-    room.lastAppliedRebuys = rebuys;
-
-    // Recalcula vivos após decisões/rebuys
-    const aliveAfterWindow = (room.playersBySeat || []).filter(pl => pl && !pl.eliminated);
-    if (aliveAfterWindow.length <= 1) {
-      room.matchEnded = true;
-      room.matchWinnerSeat = room.playersBySeat.indexOf(aliveAfterWindow[0]) + 1;
-
-      finalizeMatchEconomy(room);
-      if (room?.id) sendState(room.id);
-      return;
-    }
-
-    startNewRound(room);
-    if (room?.id) sendState(room.id);
-  }, ms);
-}
-
-async function scheduleNextRoundWithReentry(room, ms = 20000) {
-  room.reentryDecisionUntil = 0;
-  room.lastAppliedReentries = [];
-
-  const alivePlayers = (room.playersBySeat || [])
-    .filter(pl => pl && !pl.eliminated);
-
-  // =====================================================
-  // 1) SE SOBROU APENAS 1 JOGADOR VIVO, ACABOU.
-  // NÃO EXISTE REENTRADA NESTE CASO.
-  // =====================================================
-  if (alivePlayers.length <= 1) {
-    room.reentryDecisionUntil = 0;
-
-    if (room.nextRoundTimeoutId) {
-      clearTimeout(room.nextRoundTimeoutId);
-      room.nextRoundTimeoutId = null;
-    }
-
-    room.matchEnded = true;
-    room.matchWinnerSeat =
-      room.playersBySeat.indexOf(alivePlayers[0]) + 1;
-
-    await finalizeCompetitionMatch(room);
-
-    if (room?.id) sendState(room.id);
-    return;
-  }
-
-  // =====================================================
-  // 2) SE TODOS OS JOGADORES VIVOS ESTÃO COM 1 VIDA,
-  // TODOS ESTÃO NA MARRA.
-  // NÃO EXISTE MAIS DIREITO À REENTRADA.
-  // =====================================================
-  const allAliveInMarra = alivePlayers.every(pl =>
-    Number(pl.vidas ?? pl.totalPoints ?? 0) === 1
-  );
-
-  if (room.nextRoundTimeoutId) {
-    clearTimeout(room.nextRoundTimeoutId);
-    room.nextRoundTimeoutId = null;
-  }
-
-  if (allAliveInMarra) {
-    room.reentryDecisionUntil = 0;
-
-    const nextRoundDelayMs = 1000;
-
-    room.nextRoundTimeoutId = setTimeout(() => {
-      room.nextRoundTimeoutId = null;
-      room.reentryDecisionUntil = 0;
-
-      startNewRound(room);
-
-      if (room?.id) sendState(room.id);
-    }, nextRoundDelayMs);
-
-    if (room?.id) sendState(room.id);
-    return;
-  }
-
-  // =====================================================
-  // 3) PROCURA ELIMINADOS QUE AINDA PODEM DECIDIR
-  // SOBRE REENTRADA.
-  // =====================================================
-  const hasConnectedChoices = (room.playersBySeat || []).some(pl =>
-    pl &&
-    pl.eliminated === true &&
-    pl.disconnected !== true &&
-    pl.pendingReentry !== true &&
-    pl.reentryDeclined !== true &&
-    (pl.reentryCount || 0) < 3
-  );
-
-  // =====================================================
-  // 4) NÃO HÁ NINGUÉM CONECTADO PRECISANDO DECIDIR.
-  // APLICA EVENTUAIS REENTRADAS JÁ PENDENTES E SEGUE.
-  // =====================================================
-  if (!hasConnectedChoices) {
-    room.reentryDecisionUntil = 0;
-
-    const reentries = await applyPendingReentries(room);
-    room.lastAppliedReentries = reentries;
-
-    const aliveAfterReentry = (room.playersBySeat || [])
-      .filter(pl => pl && !pl.eliminated);
-
-    // Segurança:
-    // se por algum motivo sobrou apenas um após aplicar,
-    // encerra a competição.
-    if (aliveAfterReentry.length <= 1) {
-      room.matchEnded = true;
-      room.matchWinnerSeat =
-        room.playersBySeat.indexOf(aliveAfterReentry[0]) + 1;
-
-      await finalizeCompetitionMatch(room);
-
-      if (room?.id) sendState(room.id);
-      return;
-    }
-
-    const nextRoundDelayMs = 1000;
-
-    room.nextRoundTimeoutId = setTimeout(() => {
-      room.nextRoundTimeoutId = null;
-      room.reentryDecisionUntil = 0;
-
-      startNewRound(room);
-
-      if (room?.id) sendState(room.id);
-    }, nextRoundDelayMs);
-
-    if (room?.id) sendState(room.id);
-    return;
-  }
-
-  // =====================================================
-  // 5) EXISTE JOGADOR COM DIREITO À REENTRADA.
-  // ABRE A JANELA DE DECISÃO.
-  // =====================================================
-  room.reentryDecisionUntil = Date.now() + ms;
-
-  if (room?.id) sendState(room.id);
-
-  room.nextRoundTimeoutId = setTimeout(async () => {
-    room.nextRoundTimeoutId = null;
-    room.reentryDecisionUntil = 0;
-
-    // Quem estava conectado e não confirmou até o fim
-    // da janela passa a contar como recusou.
-    for (const pl of room.playersBySeat || []) {
-      if (!pl) continue;
-
-      if (
-        pl.eliminated === true &&
-        pl.disconnected !== true &&
-        pl.pendingReentry !== true &&
-        pl.reentryDeclined !== true &&
-        (pl.reentryCount || 0) < 3
-      ) {
-        pl.reentryDeclined = true;
-      }
-    }
-
-    const reentries = await applyPendingReentries(room);
-    room.lastAppliedReentries = reentries;
-
-    const aliveAfterWindow = (room.playersBySeat || [])
-      .filter(pl => pl && !pl.eliminated);
-
-    if (aliveAfterWindow.length <= 1) {
-      room.matchEnded = true;
-      room.matchWinnerSeat =
-        room.playersBySeat.indexOf(aliveAfterWindow[0]) + 1;
-
-      await finalizeCompetitionMatch(room);
-
-      if (room?.id) sendState(room.id);
-      return;
-    }
-
-    startNewRound(room);
-
-    if (room?.id) sendState(room.id);
-  }, ms);
 }
 
 
@@ -2767,7 +1627,7 @@ function validateMeldCards(room, cards) {
             msg: "Trinca precisa ter pelo menos 3 naipes diferentes."
           };
         }
-
+/*
         // Se TEM coringa, o coringa não conta com o naipe físico dele.
         // Só as cartas reais precisam ter naipes diferentes entre si.
         if (jokerCount > 0 && uniqueRealSuits.size !== realSuits.length) {
@@ -2776,7 +1636,7 @@ function validateMeldCards(room, cards) {
             msg: "Trinca inválida: naipes reais repetidos."
           };
         }
-
+*/
         // Validação antiga só deve rodar quando NÃO tem coringa.
         if (jokerCount === 0) {
           const crazyTrincaCheck = validateCrazyTrincaShape(cards, { initial: true });
@@ -2977,7 +1837,7 @@ wss.on("close", () => {
   clearInterval(wsHeartbeatInterval);
 });
 
-const PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3004;
 app.use(express.static("cacheta"));
 
 function getCookieFromHeader(cookieHeader, name) {
@@ -3151,8 +2011,6 @@ function makeRoom(t) {
     // valor da inscrição da competição
     competitionEntryFee: Number(t?.entryFee) || 0,
 
-    // valor da Reentrada
-    competitionReentryFee: Number(t?.reentryFee ?? t?.entryFee) || 0,
 
     // total bruto arrecadado:
     // inscrições + reentradas
@@ -3170,11 +2028,8 @@ function makeRoom(t) {
     // quantidade de inscrições efetivamente cobradas
     competitionEntriesCount: 0,
 
-    // quantidade de reentradas efetivamente cobradas
-    competitionReentriesCount: 0,
 
-
-    playersBySeat: Array(10).fill(null),
+    playersBySeat: Array(6).fill(null),
     spectators: new Set(),
         deck: [],
     discard: [],
@@ -3189,7 +2044,7 @@ function makeRoom(t) {
     startAt: 0,
     currentSeat: 1,
     phase: "COMPRAR",
-    minPlayersToStart: 5, /* muda nº de jogadores para começar*/
+    minPlayersToStart: 3, /* muda nº de jogadores para começar*/
     mustUseJokerBySeat: {},
     mustUseDiscardCardBySeat: {},
 
@@ -3198,23 +2053,16 @@ function makeRoom(t) {
     matchWinnerSeat: null,
     winnerSeat: null,
 
-    // rebuy / economia
-    rebuyDecisionUntil: 0,
-    // Competição - janela de reentrada
-    reentryDecisionUntil: 0,
-    lastAppliedReentries: [],
+    // Controle de transição entre rodadas
     nextRoundTimeoutId: null,
     _autoTurnScheduled: false,
     stake: Number(t.buyIn) || 1000,        // valor base da mesa
-    miniAnte: 50,       // 5% da mesa por jogador por rodada
     pointValue: 5,      // cada ponto vale 5 fichas
     houseRakePct: 0.05, // 5% do pote final
     matchPot: 0,        // pote acumulado da partida
     matchId: null,
     roundNumber: 0,
     economicLogs: [],
-    lastAppliedRebuys: [],
-    lastMiniAnteCollected: 0,
     dealMs: 1200,
     dealEndsAt: 0,
     _dealStartTimer: null,
@@ -3222,7 +2070,7 @@ function makeRoom(t) {
 }
 
 
-function registerCompetitionMoney(room, amount, type = "entry") {
+function registerCompetitionMoney(room, amount) {
   const isCompetition =
     String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION";
 
@@ -3263,25 +2111,16 @@ function registerCompetitionMoney(room, amount, type = "entry") {
   room.competitionEntriesCount =
     Number(room.competitionEntriesCount) || 0;
 
-  room.competitionReentriesCount =
-    Number(room.competitionReentriesCount) || 0;
-
+  // Registra a inscrição
   room.competitionGross += value;
   room.competitionOrganizationFee += organizationFee;
   room.competitionPrizePool += prizeAmount;
-
-  if (type === "reentry") {
-    room.competitionReentriesCount += 1;
-  } else {
-    room.competitionEntriesCount += 1;
-  }
+  room.competitionEntriesCount += 1;
 
   room.economicLogs = room.economicLogs || [];
 
   room.economicLogs.push({
-    type: type === "reentry"
-      ? "competition_reentry"
-      : "competition_entry",
+    type: "competition_entry",
 
     tableId: room.id,
     matchId: room.matchId || null,
@@ -3302,10 +2141,7 @@ function registerCompetitionMoney(room, amount, type = "entry") {
       Number(room.competitionPrizePool) || 0,
 
     competitionEntriesCount:
-      Number(room.competitionEntriesCount) || 0,
-
-    competitionReentriesCount:
-      Number(room.competitionReentriesCount) || 0
+      Number(room.competitionEntriesCount) || 0
   });
 
   return {
@@ -3315,8 +2151,6 @@ function registerCompetitionMoney(room, amount, type = "entry") {
     prizeAmount
   };
 }
-
-
 
 // --------------------
 // Baralho (exemplo)
@@ -3505,7 +2339,6 @@ function applyRoundPointPayments(room, winnerSeat) {
     const p = room.playersBySeat[i];
     if (!p) continue;
     if (i + 1 === winnerSeat) continue;
-    if (p.eliminated) continue;
 
     p.tableChips = Number(p.tableChips) || 0;
 
@@ -3533,7 +2366,7 @@ function applyRoundPointPayments(room, winnerSeat) {
 
 
 
-function pushRoundEconomicLog(room, winnerSeat, pointTransfers, miniAnteCollected = 0, rebuys = []) {
+function pushRoundEconomicLog(room, winnerSeat, pointTransfers) {
   room.economicLogs = room.economicLogs || [];
 
   room.economicLogs.push({
@@ -3549,9 +2382,6 @@ function pushRoundEconomicLog(room, winnerSeat, pointTransfers, miniAnteCollecte
     roundWinnerSeat: winnerSeat,
     pointValue: getPointValue(room),
     pointTransfers,
-    miniAntePerPlayer: getMiniAnte(room),
-    miniAnteCollected,
-    rebuys,
 
     matchPot: Number(room.matchPot) || 0,
 
@@ -3561,9 +2391,7 @@ function pushRoundEconomicLog(room, winnerSeat, pointTransfers, miniAnteCollecte
         name: p.name,
         chips: Number(p.chips) || 0,
         totalPoints: Number(p.totalPoints) || 0,
-        lastRoundPoints: Number(p.lastRoundPoints) || 0,
-        eliminated: !!p.eliminated,
-        rebuyCount: Number(p.rebuyCount) || 0
+        lastRoundPoints: Number(p.lastRoundPoints) || 0
       } : null
     )
   });
@@ -3588,12 +2416,10 @@ function roomSnapshotPublic(room) {
     buyIn: room.buyIn,
     tableType: room.tableType || "RECREATIONAL",
     entryFee: Number(room.entryFee) || 0,
-    reentryDecisionUntil: Number(room.reentryDecisionUntil) || 0,
     competitionGross: Number(room.competitionGross) || 0,
     competitionOrganizationFee: Number(room.competitionOrganizationFee) || 0,
     competitionPrizePool: Number(room.competitionPrizePool) || 0,
     competitionEntriesCount: Number(room.competitionEntriesCount) || 0,
-    competitionReentriesCount: Number(room.competitionReentriesCount) || 0,
     started: room.started,
     startAt: room.startAt || 0,
     minPlayersToStart: room.minPlayersToStart || 2,
@@ -3676,7 +2502,6 @@ function findPlayerRoomInGroupByUserId(tableGroupId, userId) {
     const player = (room.playersBySeat || []).find(
       p =>
         p &&
-        !p.eliminated &&
         p.userId != null &&
         String(p.userId) === uid
     );
@@ -4061,9 +2886,7 @@ function finalizeMatchEconomy(room) {
         seat: idx + 1,
         name: p.name,
         chips: Number(p.chips) || 0,
-        totalPoints: Number(p.totalPoints) || 0,
-        eliminated: !!p.eliminated,
-        rebuyCount: Number(p.rebuyCount) || 0
+        totalPoints: Number(p.totalPoints) || 0
       } : null
     )
   });
@@ -4291,10 +3114,7 @@ async function finalizeCompetitionMatch(room) {
       p ? {
         seat: idx + 1,
         name: p.name,
-        vidas: Number(p.vidas ?? p.totalPoints ?? 0),
-        totalPoints: Number(p.totalPoints) || 0,
-        eliminated: !!p.eliminated,
-        reentryCount: Number(p.reentryCount) || 0
+        totalPoints: Number(p.totalPoints) || 0
       } : null
     )
   });
@@ -4363,13 +3183,10 @@ function sendState(roomId) {
     // ✅ esses campos são da rodada/sala, não do jogador
     roundEnded: !!room.roundEnded,
     winnerSeat: room.winnerSeat ?? null,
-    rebuyDecisionUntil: room.rebuyDecisionUntil || 0,
-    reentryDecisionUntil: room.reentryDecisionUntil || 0,
     competitionGross: Number(room.competitionGross) || 0,
     competitionOrganizationFee: Number(room.competitionOrganizationFee) || 0,
     competitionPrizePool: Number(room.competitionPrizePool) || 0,
     competitionEntriesCount: Number(room.competitionEntriesCount) || 0,
-    competitionReentriesCount: Number(room.competitionReentriesCount) || 0,
     startAt: room.startAt || 0,
     minPlayersToStart: room.minPlayersToStart || 5,
 
@@ -4382,19 +3199,9 @@ function sendState(roomId) {
         tableChips: typeof p.tableChips === "number"
           ? p.tableChips
           : (((Number(room.buyIn) || 0) * 10) - (Number(room.buyIn) || 0)),
-        totalPoints: typeof p.vidas === "number" ? p.vidas : (p.totalPoints || 0),
-        vidas: typeof p.vidas === "number" ? p.vidas : 10,
-        lastRoundPoints: p.lastRoundPoints || 0,
+        totalPoints: Number(p.totalPoints) || 0,
+        lastRoundPoints: Number(p.lastRoundPoints) || 0,
         handCount: Array.isArray(p.hand) ? p.hand.length : 0,
-        eliminated: !!p.eliminated,
-        participando: !!p.participando,
-        passouRodada: !!p.passouRodada,
-        rebuyCount: p.rebuyCount || 0,
-        pendingRebuy: !!p.pendingRebuy,
-        rebuyDeclined: !!p.rebuyDeclined,
-        reentryCount: p.reentryCount || 0,
-        pendingReentry: !!p.pendingReentry,
-        reentryDeclined: !!p.reentryDeclined,
         disconnected: !!p.disconnected,
       } : null
     ),
@@ -4453,7 +3260,6 @@ function connectedSeatedCount(room) {
   return room.playersBySeat.filter(p => {
     if (!p) return false;
     if (p.disconnected === true) return false;
-    if (p.eliminated === true) return false;
     if (p.nextMatchReady === false) return false;
     return true;
   }).length;
@@ -4482,10 +3288,6 @@ function getClientPlayer(room, client) {
 function isOutOfTurnAllowed(actionType) {
 
   return (
-    actionType === "rebuy" ||
-    actionType === "declineRebuy" ||
-    actionType === "reentry" ||
-    actionType === "declineReentry" ||
     actionType === "startCrazyBatidaAttempt" ||
     actionType === "startBatidaComViraAttempt" ||
     actionType === "cancelCrazyBatidaAttempt"
@@ -4610,28 +3412,11 @@ function createPlayerForSeat(room, seat, clientId, client, avatarUrl) {
     // fichas da mesa
     tableChips: mesaStackLiquido,
 
-    hand: [],
+        hand: [],
 
-    // Cachetão Pro
-    vidas: 10,
-    participando: false,
-    passouRodada: false,
-    marrou: false,
-
-    // Mantidos por enquanto para não quebrar telas antigas
+    // Pontuação do Cacheta Play
     totalPoints: 0,
     lastRoundPoints: 0,
-
-    eliminated: false,
-
-    rebuyCount: 0,
-    pendingRebuy: false,
-    rebuyDeclined: false,
-
-    // Competição - reentrada
-    reentryCount: 0,
-    pendingReentry: false,
-    reentryDeclined: false,
 
     pendingBatidaAfterDiscard: false,
     disconnected: false,
@@ -4667,7 +3452,7 @@ function goToLayPhase(room) {
 }
 
 function advanceTurn(room) {
-  const totalSeats = room.playersBySeat?.length || 10;
+  const totalSeats = room.playersBySeat?.length || 6;
   let current = Number(room.currentSeat || 0);
 
     // Cachetão Pro:
@@ -4689,10 +3474,6 @@ function advanceTurn(room) {
     const p = room.playersBySeat?.[current - 1];
 
     if (!p) continue;
-    if (p.eliminated) continue;
-    if (p.passouRodada) continue;
-    if (!p.participando) continue;
-
     room.currentSeat = current;
     room.phase = "COMPRAR";
     startTurnClock(room);
@@ -5125,7 +3906,10 @@ async function handleDiscardAction(room, player, playerSeat, action) {
 
   if ((player.hand || []).length === 0 || player.pendingBatidaAfterDiscard) {
     player.pendingBatidaAfterDiscard = false;
-    await endRound(room, playerSeat);
+
+    // Cacheta Play — BATI com descarte vale 1 ponto
+    await endRound(room, playerSeat, 1);
+
     return null;
   }
 
@@ -5273,7 +4057,7 @@ function createBotForSeat(room, seat) {
 
   const s = Number(seat);
 
-  if (!(s >= 1 && s <= 10)) {
+  if (!(s >= 1 && s <= 6)) {
     return null;
   }
 
@@ -5304,28 +4088,13 @@ function createBotForSeat(room, seat) {
 
     hand: [],
 
-    // Cachetão Pro
-    vidas: 10,
-    participando: false,
-    passouRodada: false,
-    marrou: false,
-
-    // compatibilidade
     totalPoints: 0,
     lastRoundPoints: 0,
-
-    eliminated: false,
-
-    rebuyCount: 0,
-    pendingRebuy: false,
-    rebuyDeclined: false,
     pendingBatidaAfterDiscard: false,
-
     disconnected: false,
     nextMatchReady: true,
     disconnectDeadline: 0,
     disconnectTimer: null,
-
     jogosBaixados: [],
     obrigacaoBaixar: false
   };
@@ -5379,8 +4148,6 @@ room.matchEnded = false;
 room.roundEnded = false;
 room.matchWinnerSeat = null;
 room.winnerSeat = null;
-room.rebuyDecisionUntil = 0;
-room.lastAppliedRebuys = [];
 
 if (room.nextRoundTimeoutId) {
   clearTimeout(room.nextRoundTimeoutId);
@@ -5406,21 +4173,9 @@ const initialTableChips = isCompetition
     if (!p) continue;
 
     p.tableChips = initialTableChips;
-
-    p.eliminated = false;
-    p.pendingRebuy = false;
-    p.rebuyDeclined = false;
     p.pendingBatidaAfterDiscard = false;
-    p.rebuyCount = 0;
-    p.pendingReentry = false;
-    p.reentryDeclined = false;
-    p.reentryCount = 0;
     p.totalPoints = 0;
     p.lastRoundPoints = 0;
-    p.vidas = 10;
-    p.participando = false;
-    p.passouRodada = false;
-    p.marrou = false;
     p.hand = [];
     p.jogosBaixados = [];
     p.obrigacaoBaixar = false;
@@ -5434,7 +4189,6 @@ const initialTableChips = isCompetition
   room.roundEnded = false;
   room.matchWinnerSeat = null;
   room.winnerSeat = null;
-  room.rebuyDecisionUntil = 0;
   room.currentSeat = null;
   room.turnEndsAt = 0;
   room.buyEndsAt = 0;
@@ -5448,12 +4202,12 @@ const initialTableChips = isCompetition
   room.dealerSeat = getNextDealerSeat(room);*/
 
 
-   for (let s = 1; s <= 10; s++) {
+   for (let s = 1; s <= room.playersBySeat.length; s++) {
     if (room.playersBySeat[s - 1]) {
       room.currentSeat = s;
       break;
     }
-  }
+}
 
   advanceDealerAndCurrentSeat(room);
 
@@ -5505,7 +4259,6 @@ const initialTableChips = isCompetition
     room.competitionOrganizationFee = 0;
     room.competitionPrizePool = 0;
     room.competitionEntriesCount = 0;
-    room.competitionReentriesCount = 0;
     // Reseta o controle de pagamento da nova competição
     room.competitionPrizePaid = false;
     room.competitionPrizePaidAmount = 0;
@@ -5540,9 +4293,6 @@ const initialTableChips = isCompetition
 
     p.nextMatchReady = true;
     p.disconnected = false;
-    p.eliminated = false;
-    p.pendingRebuy = false;
-    p.rebuyDeclined = false;
     p.pendingBatidaAfterDiscard = false;
     p.jogosBaixados = [];
     p.obrigacaoBaixar = false;
@@ -5562,7 +4312,7 @@ const initialTableChips = isCompetition
   room.discard = [];
   room.tableMelds = [];
 
-  for (let s = 1; s <= 10; s++) {
+  for (let s = 1; s <= room.playersBySeat.length; s++) {
     const p = room.playersBySeat[s - 1];
     if (!p) continue;
 
@@ -5589,27 +4339,36 @@ const initialTableChips = isCompetition
   room._dealStartTimer = setTimeout(() => {
   room._dealStartTimer = null;
 
-  if (!room || room.matchEnded || room.roundEnded) return;
+    if (!room || room.matchEnded || room.roundEnded) return;
 
-  // Cachetão Pro:
-  // depois da primeira distribuição, todos decidem JOGAR ou CORRER
-  room.phase = "DECISAO_PARTICIPAR";
-  room.dealEndsAt = 0;
-  room.buyEndsAt = 0;
+    // =====================================================
+    // CACHETA PLAY — INÍCIO DA PRIMEIRA RODADA
+    // Todos participam, sem fase Jogar/Correr.
+    // =====================================================
+    room.phase = "COMPRAR";
+    room.dealEndsAt = 0;
+    room.buyEndsAt = 0;
 
-  if (room.dealerSeat) {
-  room.currentSeat = nextOccupiedSeat(
-    room,
-    room.dealerSeat
-  );
-}
+    // Primeiro comprador: próximo jogador após o dealer.
+    if (room.dealerSeat) {
+      room.currentSeat = nextOccupiedSeat(
+        room,
+        room.dealerSeat
+      );
+    }
 
-  // força novo relógio da decisão
+    // Cacheta Play — disponibiliza a vira antes da primeira compra
+  room.viraDisponivelParaJogar = true;
+  room.primeiroCompradorSeat = room.currentSeat;
+  room.viraEmUsoPorSeat = null;
+
+  // Inicia o relógio do primeiro jogador.
   room._autoTurnSeat = null;
   room.turnEndsAt = 0;
+
   startTurnClock(room);
 
-  if (room?.id) sendState(room.id);
+    if (room?.id) sendState(room.id);
     scheduleAutoTurn(room);
   }, room.dealMs);
 }
@@ -5640,10 +4399,6 @@ function isPlayersTurn(room, clientId) {
 }
 
 
-
-
-
-
 function nextOccupiedSeat(room, fromSeat) {
   const total = room.playersBySeat.length;
 
@@ -5651,10 +4406,7 @@ function nextOccupiedSeat(room, fromSeat) {
     const seat = ((fromSeat - 1 + step) % total) + 1;
     const p = room.playersBySeat[seat - 1];
 
-    // ✅ só pode ser próximo se:
-    // - existe jogador
-    // - não está eliminado
-    if (p && !p.eliminated) {
+    if (p) {
       return seat;
     }
   }
@@ -5664,14 +4416,14 @@ function nextOccupiedSeat(room, fromSeat) {
 
 function getNextDealerSeat(room) {
   const players = room.playersBySeat || [];
-  const total = players.length || 10;
+  const total = players.length || 6;
   const lastDealer = Number(room.dealerSeat) || 0;
 
   for (let step = 1; step <= total; step++) {
     const seat = ((lastDealer - 1 + step) % total) + 1;
     const p = players[seat - 1];
 
-    if (p && !p.eliminated) {
+    if (p) {
       return seat;
     }
   }
@@ -5874,38 +4626,7 @@ function scheduleAutoTurn(room) {
   if (!seat) return;
 
   const current = room.playersBySeat?.[seat - 1];
-  if (!current || current.eliminated) return;
-
-    // =====================================================
-    // BOT — decisão automática no Cachetão Pro
-    // Fora da Marra: corre.
-    // Na Marra: joga.
-    // A decisão em si continua centralizada em
-    // autoDecideCachetaoParticipation().
-    // =====================================================
-    if (
-      room.phase === "DECISAO_PARTICIPAR" &&
-      current.isBot === true
-    ) {
-      room._autoTurnTimer = setTimeout(() => {
-        room._autoTurnTimer = null;
-
-        if (!room || !room.started || room.roundEnded) return;
-        if (room.phase !== "DECISAO_PARTICIPAR") return;
-        if (room.currentSeat !== seat) return;
-
-        const botNow = room.playersBySeat?.[seat - 1];
-
-        if (!botNow || botNow.eliminated || botNow.isBot !== true) {
-          return;
-        }
-
-        autoDecideCachetaoParticipation(room);
-
-      }, 1500);
-
-      return;
-    }
+    if (!current) return;
 
   const now = Date.now();
 
@@ -5939,15 +4660,10 @@ function scheduleAutoTurn(room) {
     if (!seatNow) return;
 
     const currentNow = room.playersBySeat?.[seatNow - 1];
-    if (!currentNow || currentNow.eliminated) return;
+    if (!currentNow) return;
 
     const now2 = Date.now();
 
-    // Cachetão Pro: decisão automática Jogar/Correr
-    if (room.phase === "DECISAO_PARTICIPAR" && room.turnEndsAt && now2 >= room.turnEndsAt) {
-      autoDecideCachetaoParticipation(room);
-      return;
-    }
     // 1) Se ainda está em COMPRAR e bateu 15s, compra automático
     if (room.phase === "COMPRAR" && room.buyEndsAt && now2 >= room.buyEndsAt) {
       const err = handleDrawDeckAction(
@@ -6707,12 +5423,6 @@ async function handlePlayMeldAction(room, player, playerSeat, action) {
         return null;
       }
 
-      // se a carta restante força batida, encerra agora
-      if (shouldForceBatida(room, player)) {
-        await endRound(room, playerSeat);
-        return null;
-      }
-
       // batida com descarte
       if ((player.hand || []).length === 1) {
         player.pendingBatidaAfterDiscard = true;
@@ -6813,12 +5523,6 @@ async function handlePlayMeldAction(room, player, playerSeat, action) {
     return null;
   }
 
-  // Se a carta restante força batida, encerra agora
-  if (shouldForceBatida(room, player)) {
-    await endRound(room, playerSeat);
-    return null;
-  }
-
   // Cachetão Pro:
   // baixou jogos válidos e sobrou 1 carta = batida com descarte
   if ((player.hand || []).length === 1) {
@@ -6902,11 +5606,6 @@ async function handleAddToMeldAction(room, player, playerSeat, action) {
         return null;
       }
 
-      // se a carta restante não pode/ não deve ser descartada, encerra agora
-      if (shouldForceBatida(room, player)) {
-        await endRound(room, playerSeat);
-        return null;
-      }
 
       // batida com descarte normal
       if ((player.hand || []).length === 1) {
@@ -7006,11 +5705,6 @@ async function handleAddToMeldAction(room, player, playerSeat, action) {
     return null;
   }
 
-  if (shouldForceBatida(room, player)) {
-    await endRound(room, playerSeat);
-    return null;
-  }
-
   return null;
 }
 
@@ -7025,7 +5719,7 @@ async function handleAction(clientId, tableId, action) {
   if (!room) return { ok: false, msg: "Mesa inexistente." };
   if (!client) return { ok: false, msg: "Cliente inexistente." };
 
-  if (!room.started && action?.type !== "rebuy") {
+  if (!room.started) {
     return { ok: false, msg: "A Partida ainda não começou." };
   }
 
@@ -7040,69 +5734,19 @@ async function handleAction(clientId, tableId, action) {
     return { ok: false, msg: "Você não está sentado nesta mesa." };
   }
 
-// -------------------------
-// CACHETÃO PRO - DECISÃO JOGAR / CORRER
-// -------------------------
+  // =====================================================
+// CACHETA PLAY — AÇÕES ANTIGAS DESATIVADAS
+// Todos os jogadores participam automaticamente.
+// =====================================================
 if (
   action?.type === "jogarRodada" ||
   action?.type === "correrRodada" ||
   action?.type === "marraRodada"
 ) {
-
-  if (room.phase !== "DECISAO_PARTICIPAR") {
-    return { ok: false, msg: "Fora do momento de decisão." };
-  }
-
-  const seat = Number(playerSeat);
-
-  if (Number(room.currentSeat) !== seat) {
-    return { ok: false, msg: "Aguarde sua vez de decidir." };
-  }
-
-  if (player.eliminated) {
-    return { ok: false, msg: "Você foi eliminado." };
-  }
-
-  if (player.participando || player.passouRodada) {
-    return { ok: false, msg: "Você já decidiu esta rodada." };
-  }
-
-  const estaNaMarra =
-  player.marra === true ||
-  player.naMarra === true;
-
-if (action.type === "correrRodada" && estaNaMarra) {
   return {
     ok: false,
-    msg: "Você está na Marra e é obrigado a jogar."
+    msg: "Esta ação não existe no Cacheta Play."
   };
-}
-
-if (action.type === "jogarRodada" || action.type === "marraRodada") {
-  player.participando = true;
-  player.passouRodada = false;
-
-  if (estaNaMarra) {
-    player.marra = true;
-    player.naMarra = true;
-  }
-}
-
-  if (action.type === "correrRodada") {
-  player.participando = false;
-  player.passouRodada = true;
-
-    // Quem corre perde 1 ponto
-    player.vidas = Math.max(0, (Number(player.vidas) || 0) - 1);
-
-    if (player.vidas <= 0) {
-      mandarParaRebuyCachetao(room, player);
-    }
-  }
-
-  advanceCachetaoDecisionTurn(room);
-
-  return { ok: true };
 }
 
     const crazyAttemptSeatCanAct = canSeatActDuringCrazyBatidaAttempt(
@@ -7115,28 +5759,10 @@ if (action.type === "jogarRodada" || action.type === "marraRodada") {
     return { ok: false, msg: "Aguarde a tentativa de BATI." };
   }
 
-// Cachetão Pro:
-// quem correu a rodada fica apenas assistindo.
-// Não pode comprar, pegar lixo, baixar ou descartar.
-if (
-  player.passouRodada &&
-  action?.type !== "startCrazyBatidaAttempt" &&
-  action?.type !== "cancelCrazyBatidaAttempt"
-) {
-  return {
-    ok: false,
-    msg: "Você correu esta rodada. Aguarde a próxima."
-  };
-}
 
-
-  if (!isOutOfTurnAllowed(action?.type) && !crazyAttemptSeatCanAct) {
+ if (!isOutOfTurnAllowed(action?.type) && !crazyAttemptSeatCanAct) {
     if (!isPlayersTurn(room, clientId)) {
       return { ok: false, msg: "Não é sua vez." };
-    }
-
-    if (player.eliminated) {
-      return { ok: false, msg: "Você foi eliminado. Aguarde a decisão de rebuy." };
     }
   }
 
@@ -7197,351 +5823,6 @@ case "cancelCrazyBatidaAttempt": {
   const err = handleCancelCrazyBatidaAttempt(room, playerSeat);
   if (err) return err;
   break;
-}
-
-
-case "reentry": {
-  if (!player) {
-    return { ok: false, msg: "Você não está sentado nesta mesa." };
-  }
-
-  // Reentrada existe somente em mesas de competição.
-  if (
-    String(room?.tableType || "RECREATIONAL").toUpperCase() !== "COMPETITION"
-  ) {
-    return {
-      ok: false,
-      msg: "Reentrada está disponível somente em mesas de competição."
-    };
-  }
-
-  if (!player.eliminated) {
-    return {
-      ok: false,
-      msg: "Você não está eliminado."
-    };
-  }
-
-  if (player.disconnected) {
-    return {
-      ok: false,
-      msg: "Jogador desconectado não pode solicitar Reentrada."
-    };
-  }
-
-  if ((player.reentryCount || 0) >= 3) {
-    return {
-      ok: false,
-      msg: "Você atingiu o limite de Reentradas."
-    };
-  }
-
-  if (player.pendingReentry === true) {
-    return {
-      ok: false,
-      msg: "Reentrada já solicitada."
-    };
-  }
-
-  if (
-    !room.reentryDecisionUntil ||
-    Date.now() > room.reentryDecisionUntil
-  ) {
-    return {
-      ok: false,
-      msg: "Janela de Reentrada encerrada."
-    };
-  }
-
-  // Segurança adicional:
-  // a Reentrada não pode ser aceita se todos os jogadores
-  // ainda vivos estiverem com 1 vida (Marra).
-  const alivePlayers = (room.playersBySeat || [])
-    .filter(pl => pl && !pl.eliminated);
-
-  const allAliveInMarra =
-    alivePlayers.length > 0 &&
-    alivePlayers.every(pl =>
-      Number(pl.vidas ?? pl.totalPoints ?? 0) === 1
-    );
-
-  if (alivePlayers.length <= 1 || allAliveInMarra) {
-    return {
-      ok: false,
-      msg: "Reentrada não está mais disponível nesta competição."
-    };
-  }
-
-  player.pendingReentry = true;
-player.reentryDeclined = false;
-
-// Verifica se ainda existe algum eliminado conectado
-// que ainda precisa decidir sobre a Reentrada.
-const hasRemainingReentryChoices = (room.playersBySeat || []).some(pl =>
-  pl &&
-  pl.eliminated === true &&
-  pl.disconnected !== true &&
-  pl.pendingReentry !== true &&
-  pl.reentryDeclined !== true &&
-  (pl.reentryCount || 0) < 3
-);
-
-if (!hasRemainingReentryChoices) {
-  if (room.nextRoundTimeoutId) {
-    clearTimeout(room.nextRoundTimeoutId);
-    room.nextRoundTimeoutId = null;
-  }
-
-  room.reentryDecisionUntil = 0;
-
-  const reentries = await applyPendingReentries(room);
-  room.lastAppliedReentries = reentries;
-
-  const aliveAfterReentry = (room.playersBySeat || [])
-    .filter(pl => pl && !pl.eliminated);
-
-  if (aliveAfterReentry.length <= 1) {
-    room.matchEnded = true;
-    room.matchWinnerSeat =
-      room.playersBySeat.indexOf(aliveAfterReentry[0]) + 1;
-
-  await finalizeCompetitionMatch(room);
-
-    if (room?.id) sendState(room.id);
-    return { ok: true };
-  }
-
-  startNewRound(room);
-
-  if (room?.id) sendState(room.id);
-
-  return { ok: true };
-}
-
-if (room?.id) sendState(room.id);
-
-return { ok: true };
-}
-
-case "declineReentry": {
-  if (!player) {
-    return { ok: false, msg: "Você não está sentado nesta mesa." };
-  }
-
-  if (
-    String(room?.tableType || "RECREATIONAL").toUpperCase() !== "COMPETITION"
-  ) {
-    return {
-      ok: false,
-      msg: "Reentrada está disponível somente em mesas de competição."
-    };
-  }
-
-  if (!player.eliminated) {
-    return {
-      ok: false,
-      msg: "Você não está eliminado."
-    };
-  }
-
-  if (
-    !room.reentryDecisionUntil ||
-    Date.now() > room.reentryDecisionUntil
-  ) {
-    return {
-      ok: false,
-      msg: "Janela de Reentrada encerrada."
-    };
-  }
-
-  player.pendingReentry = false;
-  player.reentryDeclined = true;
-
-  const hasRemainingReentryChoices = (room.playersBySeat || []).some(pl =>
-    pl &&
-    pl.eliminated === true &&
-    pl.disconnected !== true &&
-    pl.pendingReentry !== true &&
-    pl.reentryDeclined !== true &&
-    (pl.reentryCount || 0) < 3
-  );
-
-  if (!hasRemainingReentryChoices) {
-    if (room.nextRoundTimeoutId) {
-      clearTimeout(room.nextRoundTimeoutId);
-      room.nextRoundTimeoutId = null;
-    }
-
-    room.reentryDecisionUntil = 0;
-
-    const reentries = await applyPendingReentries(room);
-    room.lastAppliedReentries = reentries;
-
-    const aliveAfterReentry = (room.playersBySeat || [])
-      .filter(pl => pl && !pl.eliminated);
-
-    if (aliveAfterReentry.length <= 1) {
-      room.matchEnded = true;
-      room.matchWinnerSeat =
-        room.playersBySeat.indexOf(aliveAfterReentry[0]) + 1;
-
-      await finalizeCompetitionMatch(room);
-
-      if (room?.id) sendState(room.id);
-      return { ok: true };
-    }
-
-    startNewRound(room);
-
-    if (room?.id) sendState(room.id);
-
-    return { ok: true };
-  }
-
-  if (room?.id) sendState(room.id);
-
-  return { ok: true };
-}
-
-
-case "rebuy": {
-  if (!player) {
-    return { ok: false, msg: "Você não está sentado nesta mesa." };
-  }
-
-  if (
-    String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION"
-  ) {
-    return {
-      ok: false,
-      msg: "Rebuy não está disponível em mesas de competição."
-    };
-  }
-
-
-  if (!player.eliminated) {
-    return { ok: false, msg: "Você não está eliminado." };
-  }
-
-  if (player.disconnected) {
-    return { ok: false, msg: "Jogador desconectado usa rebuy automático." };
-  }
-
-  if ((player.rebuyCount || 0) >= 3) {
-    return { ok: false, msg: "Você atingiu o limite de Rebuy." };
-  }
-
-  const cost = Number(getRebuyCost(room, player)) || 0;
-
-  if ((Number(player.chips) || 0) < cost) {
-    return { ok: false, msg: "Saldo insuficiente para Rebuy." };
-  }
-
-  if (player.pendingRebuy === true) {
-    return { ok: false, msg: "Rebuy já solicitado." };
-  }
-
-  if (!room.rebuyDecisionUntil || Date.now() > room.rebuyDecisionUntil) {
-    return { ok: false, msg: "Janela de Rebuy encerrada." };
-  }
-
-  player.pendingRebuy = true;
-  player.rebuyDeclined = false;
-
-  // Se não há mais ninguém precisando decidir, não espera o timer acabar.
-  if (!hasRebuyChoices(room)) {
-    if (room.nextRoundTimeoutId) {
-      clearTimeout(room.nextRoundTimeoutId);
-      room.nextRoundTimeoutId = null;
-    }
-
-    room.rebuyDecisionUntil = 0;
-
-    const rebuys = applyPendingRebuys(room);
-    room.lastAppliedRebuys = rebuys;
-
-    const aliveAfterRebuy = (room.playersBySeat || []).filter(pl => pl && !pl.eliminated);
-
-    if (aliveAfterRebuy.length <= 1) {
-      room.matchEnded = true;
-      room.matchWinnerSeat = room.playersBySeat.indexOf(aliveAfterRebuy[0]) + 1;
-
-      finalizeMatchEconomy(room);
-      if (room?.id) sendState(room.id);
-      return { ok: true };
-    }
-
-    startNewRound(room);
-    if (room?.id) sendState(room.id);
-    return { ok: true };
-  }
-
-  break;
-}
-
-case "declineRebuy": {
-
-  console.log("[SERVER] declineRebuy recebido", {
-  player: player?.name,
-  seat: player?.seat,
-  tableId: room?.id
-});
-
-  if (!player) {
-    return { ok: false, msg: "Você não está sentado nesta mesa." };
-  }
-
-  if (
-    String(room?.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION"
-  ) {
-    return {
-      ok: false,
-      msg: "Rebuy não está disponível em mesas de competição."
-    };
-  }
-
-  if (!player.eliminated) {
-    return { ok: false, msg: "Você não está eliminado." };
-  }
-
-  if (!room.rebuyDecisionUntil || Date.now() > room.rebuyDecisionUntil) {
-    return { ok: false, msg: "Janela de Rebuy encerrada." };
-  }
-
-  player.pendingRebuy = false;
-  player.rebuyDeclined = true;
-
-  // Se não há mais ninguém precisando decidir, não espera o timer acabar.
-  if (!hasRebuyChoices(room)) {
-    if (room.nextRoundTimeoutId) {
-      clearTimeout(room.nextRoundTimeoutId);
-      room.nextRoundTimeoutId = null;
-    }
-
-    room.rebuyDecisionUntil = 0;
-
-    const rebuys = applyPendingRebuys(room);
-    room.lastAppliedRebuys = rebuys;
-
-    const aliveAfterRebuy = (room.playersBySeat || []).filter(pl => pl && !pl.eliminated);
-
-    if (aliveAfterRebuy.length <= 1) {
-      room.matchEnded = true;
-      room.matchWinnerSeat = room.playersBySeat.indexOf(aliveAfterRebuy[0]) + 1;
-
-      finalizeMatchEconomy(room);
-      if (room?.id) sendState(room.id);
-      return { ok: true };
-    }
-
-    startNewRound(room);
-    if (room?.id) sendState(room.id);
-    return { ok: true };
-  }
-
-  if (room?.id) sendState(room.id);
-
-  return { ok: true };
 }
 
 
@@ -7866,7 +6147,7 @@ if (msg.type === "joinTableGroup") {
     return send(ws, "error", { message: "Mesa inválida." });
   }
 
-  if (!(seat >= 1 && seat <= 10)) {
+  if (!(seat >= 1 && seat <= 6)) {
     return send(ws, "error", { message: "Assento inválido." });
   }
 
@@ -7887,13 +6168,12 @@ if (c.userId != null) {
     if (!sameGroup) continue;
 
     const existingSeatIndex =
-      (existingRoom.playersBySeat || []).findIndex(player =>
-        player &&
-        player.isBot !== true &&
-        player.userId != null &&
-        String(player.userId) === String(c.userId) &&
-        !player.eliminated
-      );
+    (existingRoom.playersBySeat || []).findIndex(player =>
+      player &&
+      player.isBot !== true &&
+      player.userId != null &&
+      String(player.userId) === String(c.userId)
+    );
 
     if (existingSeatIndex >= 0) {
       const existingSeat = existingSeatIndex + 1;
@@ -7996,8 +6276,7 @@ if (targetIsCompetition && c.userId != null) {
         player &&
         player.isBot !== true &&
         player.userId != null &&
-        String(player.userId) === String(c.userId) &&
-        !player.eliminated
+        String(player.userId) === String(c.userId)
       );
 
     if (existingSeatIndex === -1) {
@@ -8069,9 +6348,9 @@ if (isCompetition) {
 
   const s = Number(seat);
 
-      if (!(s >= 1 && s <= 10)) {
-        return send(ws, "error", { message: "Assento inválido." });
-      }
+    if (!(Number.isInteger(s) && s >= 1 && s <= room.playersBySeat.length)) {
+      return send(ws, "error", { message: "Assento inválido." });
+    }
 
       // =====================================================
       // HUMANO ENTRANDO DURANTE O COUNTDOWN:
@@ -8119,18 +6398,11 @@ if (isCompetition) {
     }
     
     const canReclaim =
-      reconnectToken &&
-      existing.reconnectToken === reconnectToken &&
-      !existing.eliminated;
+    reconnectToken &&
+    existing.reconnectToken === reconnectToken;
    
     // se não pode reconectar, o assento continua ocupado
     if (!canReclaim) {
-
-      if (existing.eliminated) {
-        return send(ws, "error", {
-          message: "Este jogador já foi eliminado desta partida."
-        });
-      }
 
       return send(ws, "error", { message: "Assento ocupado." });
     }
@@ -8269,19 +6541,10 @@ if (msg.type === "keepSeatForNextMatch") {
   // Não mexe na mesa inteira e não mexe nos outros jogadores.
   p.nextMatchReady = true;
   p.disconnected = false;
-  p.eliminated = false;
-  p.pendingRebuy = false;
-  p.rebuyDeclined = false;
   p.pendingBatidaAfterDiscard = false;
   p.hand = [];
   p.jogosBaixados = [];
   p.obrigacaoBaixar = false;
-
-  // Cachetão Pro
-  p.vidas = 10;
-  p.participando = false;
-  p.passouRodada = false;
-  p.marrou = false;
 
   // Mantém zerado só para não quebrar telas antigas ainda
   p.totalPoints = 0;
@@ -8397,5 +6660,5 @@ if (msg.type === "keepSeatForNextMatch") {
   });
 
   server.listen(PORT, () => {
-    console.log(`🃏 Cachetão Pro rodando em http://localhost:${PORT}`);
+    console.log(`🃏 CachetaPlay rodando em http://localhost:${PORT}`);
   });

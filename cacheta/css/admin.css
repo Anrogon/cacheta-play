@@ -1,5 +1,5 @@
 /* =========================================================
-   Cacheta Play — ÁREA ADMINISTRATIVA
+   Cacheta Play â€” ÃREA ADMINISTRATIVA
 ========================================================= */
 
 body.admin-theme{
@@ -9,8 +9,7 @@ body.admin-theme{
   box-sizing:border-box;
 
   background:
-    linear-gradient(rgba(0,70,35,.72), rgba(0,35,18,.90)),
-    url("../assets/image/bg-g.png") center/cover fixed no-repeat;
+    url("../assets/image/bg-az.png") center/cover fixed no-repeat;
 
   color:#fff;
   font-family:Arial, Helvetica, sans-serif;
@@ -35,8 +34,8 @@ body.admin-theme{
 
   border-radius:20px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.38);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.38);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.08),
@@ -46,7 +45,7 @@ body.admin-theme{
 .admin-brand h1{
   margin:0 0 5px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:31px;
   font-weight:900;
@@ -72,10 +71,10 @@ body.admin-theme{
 
   border-radius:999px;
 
-  background:rgba(212,175,55,.12);
-  border:1px solid rgba(212,175,55,.35);
+  background:rgba(213,163,44,.12);
+  border:1px solid rgba(213,163,44,.35);
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:13px;
   font-weight:900;
@@ -87,7 +86,7 @@ body.admin-theme{
   min-height:22px;
   margin:0 0 18px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   text-align:center;
   font-size:14px;
@@ -101,8 +100,8 @@ body.admin-theme{
 .admin-panel{
   border-radius:18px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.30);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.30);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.06),
@@ -117,7 +116,7 @@ body.admin-theme{
 .admin-hero h2{
   margin:0 0 8px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:23px;
   font-weight:900;
@@ -132,7 +131,7 @@ body.admin-theme{
   line-height:1.6;
 }
 
-/* BARRA DE AÇÕES */
+/* BARRA DE AÃ‡Ã•ES */
 
 .admin-toolbar{
   display:flex;
@@ -151,7 +150,7 @@ body.admin-theme{
   flex-wrap:wrap;
 }
 
-/* ESTATÍSTICAS */
+/* ESTATÃSTICAS */
 
 .admin-stats-grid{
   display:grid;
@@ -175,7 +174,7 @@ body.admin-theme{
 }
 
 .admin-stat-value{
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:32px;
   font-weight:900;
@@ -193,7 +192,7 @@ body.admin-theme{
 .admin-panel h3{
   margin:0 0 14px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:20px;
   font-weight:900;
@@ -210,7 +209,7 @@ body.admin-theme{
   border-radius:13px;
 
   background:rgba(255,255,255,.06);
-  border:1px solid rgba(212,175,55,.18);
+  border:1px solid rgba(213,163,44,.18);
 }
 
 .admin-action-main{
@@ -237,7 +236,7 @@ body.admin-theme{
   font-size:14px;
 }
 
-/* BOTÕES */
+/* BOTÃ•ES */
 
 .admin-btn{
   display:inline-flex;
@@ -273,8 +272,8 @@ body.admin-theme{
 }
 
 .admin-btn-primary{
-  background:linear-gradient(180deg,#a51f36,#731726);
-  border-color:rgba(212,175,55,.35);
+  background:linear-gradient(180deg,#1685E8,#0754A8);
+  border-color:rgba(213,163,44,.35);
 
   color:#fff;
 
@@ -282,24 +281,24 @@ body.admin-theme{
 }
 
 .admin-btn-primary:hover{
-  background:linear-gradient(180deg,#bd2941,#8b1d2f);
+  background:linear-gradient(180deg,#2995F0,#0964BF);
 }
 
 .admin-btn-secondary{
   background:rgba(255,255,255,.09);
-  border-color:rgba(212,175,55,.24);
+  border-color:rgba(213,163,44,.24);
 
   color:#fff;
 }
 
 .admin-btn-secondary:hover{
   background:rgba(255,255,255,.15);
-  border-color:rgba(212,175,55,.42);
+  border-color:rgba(213,163,44,.42);
 }
 
 .admin-btn-danger{
   background:linear-gradient(180deg,#8f1f33,#651523);
-  border-color:rgba(212,175,55,.28);
+  border-color:rgba(213,163,44,.28);
 
   color:#fff;
 }
@@ -325,7 +324,7 @@ body.admin-theme{
 .admin-page-title{
   margin:0 0 20px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:31px;
   font-weight:900;
@@ -336,7 +335,7 @@ body.admin-theme{
 .admin-section-title{
   margin:24px 0 14px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:21px;
   font-weight:900;
@@ -355,8 +354,8 @@ body.admin-theme{
 
   border-radius:18px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.30);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.30);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.06),
@@ -376,7 +375,7 @@ body.admin-theme{
 .admin-finance-card strong{
   display:block;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:28px;
   font-weight:900;
@@ -390,8 +389,8 @@ body.admin-theme{
 
   border-radius:18px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.30);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.30);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.06),
@@ -409,7 +408,7 @@ body.admin-theme{
 .admin-table td{
   padding:13px 12px;
 
-  border-bottom:1px solid rgba(212,175,55,.16);
+  border-bottom:1px solid rgba(213,163,44,.16);
 
   text-align:left;
   vertical-align:middle;
@@ -418,9 +417,9 @@ body.admin-theme{
 }
 
 .admin-table th{
-  background:rgba(212,175,55,.12);
+  background:rgba(213,163,44,.12);
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-weight:900;
   white-space:nowrap;
@@ -467,10 +466,10 @@ body.admin-theme{
 }
 
 .admin-status-pending{
-  background:rgba(212,175,55,.15);
-  border:1px solid rgba(212,175,55,.32);
+  background:rgba(213,163,44,.15);
+  border:1px solid rgba(213,163,44,.32);
 
-  color:#ffd86b;
+  color:#F0C75E;
 }
 
 .admin-status-rejected{
@@ -482,7 +481,7 @@ body.admin-theme{
 
 
 /* =========================================================
-   PÁGINA INICIAL DA ADMINISTRAÇÃO
+   PÃGINA INICIAL DA ADMINISTRAÃ‡ÃƒO
 ========================================================= */
 
 .admin-info-grid{
@@ -498,8 +497,8 @@ body.admin-theme{
 
   border-radius:18px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.30);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.30);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.06),
@@ -509,7 +508,7 @@ body.admin-theme{
 .admin-info-card h2{
   margin:0 0 14px;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:20px;
   font-weight:900;
@@ -523,7 +522,7 @@ body.admin-theme{
 
   padding:11px 0;
 
-  border-bottom:1px solid rgba(212,175,55,.14);
+  border-bottom:1px solid rgba(213,163,44,.14);
 
   font-size:14px;
 }
@@ -565,8 +564,8 @@ body.admin-theme{
 
   border-radius:18px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.30);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.30);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.06),
@@ -577,7 +576,7 @@ body.admin-theme{
 .admin-menu-card h3{
   margin:0;
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:19px;
   font-weight:900;
@@ -607,7 +606,7 @@ body.admin-theme{
 
 
 /* =========================================================
-   ADMINISTRAÇÃO DE USUÁRIOS
+   ADMINISTRAÃ‡ÃƒO DE USUÃRIOS
 ========================================================= */
 
 .admin-users-toolbar{
@@ -634,7 +633,7 @@ body.admin-theme{
   border-radius:12px;
 
   background:rgba(255,255,255,.08);
-  border:1px solid rgba(212,175,55,.22);
+  border:1px solid rgba(213,163,44,.22);
 
   color:rgba(255,255,255,.82);
 
@@ -643,7 +642,7 @@ body.admin-theme{
 }
 
 .admin-counter strong{
-  color:#ffd86b;
+  color:#F0C75E;
 }
 
 .admin-field{
@@ -653,7 +652,7 @@ body.admin-theme{
   padding:11px 14px;
 
   border-radius:12px;
-  border:1px solid rgba(212,175,55,.24);
+  border:1px solid rgba(213,163,44,.24);
 
   background:rgba(255,255,255,.09);
 
@@ -681,9 +680,9 @@ body.admin-theme{
 
 .admin-field:focus{
   background:rgba(255,255,255,.13);
-  border-color:#d4af37;
+  border-color:#D5A32C;
 
-  box-shadow:0 0 0 3px rgba(212,175,55,.16);
+  box-shadow:0 0 0 3px rgba(213,163,44,.16);
 }
 
 .admin-field::placeholder{
@@ -700,8 +699,8 @@ body.admin-theme{
 
   border-radius:18px;
 
-  background:linear-gradient(180deg,#06391f,#032514);
-  border:1px solid rgba(212,175,55,.30);
+  background:linear-gradient(180deg,#10376B,#061B42);
+  border:1px solid rgba(213,163,44,.30);
 
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.06),
@@ -728,7 +727,7 @@ body.admin-theme{
 .admin-users-table td{
   padding:12px 14px;
 
-  border-bottom:1px solid rgba(212,175,55,.14);
+  border-bottom:1px solid rgba(213,163,44,.14);
 
   text-align:left;
   vertical-align:middle;
@@ -738,9 +737,9 @@ body.admin-theme{
 }
 
 .admin-users-table th{
-  background:rgba(212,175,55,.12);
+  background:rgba(213,163,44,.12);
 
-  color:#ffd86b;
+  color:#F0C75E;
 
   font-size:13px;
   font-weight:900;
@@ -785,10 +784,10 @@ body.admin-theme{
 }
 
 .admin-pill{
-  background:rgba(212,175,55,.15);
-  border:1px solid rgba(212,175,55,.35);
+  background:rgba(213,163,44,.15);
+  border:1px solid rgba(213,163,44,.35);
 
-  color:#ffd86b;
+  color:#F0C75E;
 }
 
 .user-pill{
@@ -834,7 +833,7 @@ body.admin-theme{
 }
 
 .admin-pagination-label strong{
-  color:#ffd86b;
+  color:#F0C75E;
 }
 
 .admin-page-size{

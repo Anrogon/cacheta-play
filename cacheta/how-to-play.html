@@ -46,6 +46,13 @@
   .howto-final-alert{
     margin-top:30px;
   }
+
+  /* Cartas ilustrativas — exclusivas da página Como Jogar */
+  .howto-cards{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 7px;}
+  .howto-card{display:inline-flex;align-items:center;justify-content:center;min-width:43px;min-height:59px;padding:4px;border-radius:7px;background:#fff;color:#14213b;border:1px solid #c9cbd0;font-size:20px;font-weight:800;box-shadow:0 2px 5px rgba(0,0,0,.18);}
+  .howto-card.howto-red{color:#c42836;}
+  .howto-card.howto-joker{color:#0754a8;background:#fff7d9;border-color:#d5a32c;}
+  .howto-example p{margin:8px 0 0;}
 </style>
 </head>
 
@@ -53,380 +60,114 @@
   <main class="cp-page">
     <section class="cp-card cp-content">
 
-      <h1 class="cp-title">
-        ♠ Como Jogar Cachet PLay ♥
-      </h1>
-
-      <div class="cp-date">
-        Guia rápido para novos jogadores
-      </div>
-
-      <div class="cp-alert">
-        Aprenda as principais regras do Cacheta Play em poucos minutos
-        e entre preparado para sua primeira partida.
-      </div>
-
+      <h1 class="cp-title">♠ Como Jogar Cacheta Play ♥</h1>
+      <div class="cp-date">Guia de regras e combinações válidas</div>
+      <div class="cp-alert">Aprenda a formar jogos, usar os coringas e reconhecer as batidas que valem 1 ou 2 pontos.</div>
       <nav class="cp-index" aria-label="Índice de Como Jogar">
         <div class="cp-index-title">Índice</div>
-
         <div class="cp-index-links">
           <a href="#objetivo">🎯 Objetivo</a>
           <a href="#rodada">🎴 Rodada</a>
-          <a href="#coringa">🃏 Coringa</a>
-          <a href="#jogar">🟢 Jogar</a>
-          <a href="#jogar-vira">🎴 Jogar com a Vira</a>
-          <a href="#correr">⚪ Correr</a>
-          <a href="#marra">⚔ Marra</a>
+          <a href="#combinacoes">🂡 Combinações</a>
+          <a href="#coringa">🃏 Coringas</a>
+          <a href="#compra">🎴 Compra e descarte</a>
           <a href="#bati">🏆 Batidas</a>
+          <a href="#jogar-vira">🎴 Jogar com a Vira</a>
           <a href="#bater-vira">🏆 Bater com a Vira</a>
-          <a href="#pontuacao">💰 Pontuação</a>
+          <a href="#pontuacao">⭐ Pontuação</a>
           <a href="#dicas">💡 Dicas</a>
         </div>
       </nav>
 
       <h2 id="objetivo">🎯 Objetivo</h2>
-
-      <p>
-        Todos os jogadores iniciam a partida com <strong>10 pontos</strong>.
-      </p>
-
-      <p>
-        O objetivo não é apenas vencer uma rodada, mas permanecer vivo
-        até ser o último jogador da mesa.
-      </p>
-
+      <p>O objetivo é organizar suas cartas em combinações válidas e realizar uma batida. Cada batida concede pontos conforme sua modalidade. <strong>Vence a partida quem alcançar 5 pontos.</strong></p>
       <hr>
 
       <h2 id="rodada">🎴 Como funciona uma rodada</h2>
-
       <ol class="howto-steps">
         <li>Cada jogador recebe <strong>9 cartas</strong>.</li>
-        <li>Uma carta é virada.</li>
-        <li>A carta virada define os coringas da rodada.</li>
-
-        <li>
-          A decisão começa pelo primeiro jogador após o carteador.
-          O carteador é o último a decidir.
-        </li>
-
-        <li>
-          Cada jogador decide entre <strong>Jogar</strong> ou
-          <strong>Correr</strong>.
-        </li>
-
-        <li>
-          A rodada começa entre os jogadores que decidiram jogar.
-        </li>
-
-        <li>
-          Antes da primeira compra, os participantes podem declarar
-          <strong>BATI com a Vira</strong>.
-        </li>
-
-        <li>
-          O primeiro jogador que realizará a compra também poderá escolher
-          <strong>Jogar com a Vira</strong>.
-        </li>
-
-        <li>
-          O vencedor da rodada é o jogador que realizar uma batida válida primeiro.
-        </li>
+        <li>Uma carta é virada para definir os <strong>coringas da rodada</strong>.</li>
+        <li>Antes da primeira compra, é possível tentar uma <strong>batida com a vira</strong>, conforme as regras abaixo.</li>
+        <li>Na sua vez, o jogador compra uma carta do monte ou, quando disponível, pega a carta do lixo, e prossegue com sua jogada.</li>
+        <li>A rodada termina quando ocorre uma batida válida.</li>
       </ol>
-
       <hr>
 
-      <h2 id="coringa">🃏 O Coringa</h2>
-
-      <p>
-        O Cacheta Play não possui coringas fixos.
-      </p>
-
-      <p>
-        Os coringas mudam a cada rodada conforme a carta virada.
-      </p>
-
+      <h2 id="combinacoes">🂡 Combinações válidas</h2>
+      <p>Os jogos são formados por cartas em <strong>sequência do mesmo naipe</strong> ou por <strong>cartas do mesmo valor</strong> (trincas, quadras e quinas). Os exemplos abaixo mostram como essas combinações aparecem na prática.</p>
+<div class="howto-example"><strong>Sequência de três cartas</strong><div class="howto-cards"><span class="howto-card howto-red ">7♥</span><span class="howto-card howto-red ">8♥</span><span class="howto-card howto-red ">9♥</span></div><p>Três valores consecutivos do mesmo naipe.</p></div><div class="howto-example"><strong>Trinca</strong><div class="howto-cards"><span class="howto-card  ">Q♣</span><span class="howto-card howto-red ">Q♥</span><span class="howto-card  ">Q♠</span></div><p>Três damas de naipes diferentes.</p></div><div class="howto-example"><strong>Sequência de quatro cartas (quadra)</strong><div class="howto-cards"><span class="howto-card  ">4♣</span><span class="howto-card  ">5♣</span><span class="howto-card  ">6♣</span><span class="howto-card  ">7♣</span></div><p>Uma sequência de quatro cartas pode integrar uma batida especial.</p></div><div class="howto-example"><strong>Sequência de cinco cartas (quina)</strong><div class="howto-cards"><span class="howto-card howto-red ">9♥</span><span class="howto-card howto-red ">10♥</span><span class="howto-card howto-red ">J♥</span><span class="howto-card howto-red ">Q♥</span><span class="howto-card howto-red ">K♥</span></div><p>Uma sequência de cinco cartas pode integrar a batida de Quadra e Quina.</p></div>
       <div class="howto-example">
-        <strong>Exemplo:</strong><br>
-        Vira: <strong>9♥</strong><br>
-        Coringas: <strong>10♥</strong> e <strong>10♦</strong>
+        <strong>Quadra de cartas do mesmo valor</strong>
+        <div class="howto-cards"><span class="howto-card">7♣</span><span class="howto-card howto-red">7♦</span><span class="howto-card howto-red">7♥</span><span class="howto-card">7♣</span></div>
+        <p>Quatro cartas de valor 7. Como o jogo utiliza dois baralhos, é possível repetir um mesmo naipe.</p>
       </div>
-
-      <p>
-        O coringa pode substituir qualquer carta em sequências e trincas.
-        Também é permitido utilizar dois coringas no mesmo jogo.
-      </p>
-
+      <div class="howto-example">
+        <strong>Quina de cartas do mesmo valor</strong>
+        <div class="howto-cards"><span class="howto-card howto-red">A♦</span><span class="howto-card">A♣</span><span class="howto-card">A♠</span><span class="howto-card">A♣</span><span class="howto-card">A♠</span></div>
+        <p>Cinco ases. Com dois baralhos, também podem existir cartas repetidas de mesmo valor e naipe.</p>
+      </div>
       <hr>
-
-      <h2 id="jogar">🟢 Jogar</h2>
-
-      <p>
-        Quem escolher <strong>Jogar</strong> participa normalmente da rodada.
-      </p>
-
-      <p>
-        Caso perca a rodada, perde <strong>2 pontos</strong>.
-      </p>
-
+      <h2 id="coringa">🃏 Os coringas da rodada</h2>
+      <p>O Cacheta Play não utiliza um coringa fixo: os coringas mudam conforme a carta virada. Eles podem substituir cartas que faltam para completar jogos válidos, inclusive quando há dois coringas na mesma combinação.</p>
+      <div class="howto-example"><strong>Exemplo de vira:</strong><p>Vira: <strong>9♥</strong> — Coringas: <strong>10♥</strong> e <strong>10♦</strong>.</p></div>
+<div class="howto-example"><strong>Exemplo ilustrativo de sequência com coringa</strong><div class="howto-cards"><span class="howto-card  ">10♣</span><span class="howto-card  howto-joker">★</span><span class="howto-card  ">Q♣</span></div><p>Neste exemplo, ★ representa um coringa da rodada utilizado no lugar do J♣.</p></div>      <div class="howto-example">
+        <strong>Trinca com um coringa</strong>
+        <div class="howto-cards"><span class="howto-card">10♣</span><span class="howto-card howto-red">10♦</span><span class="howto-card howto-joker">🃏</span></div>
+        <p>O coringa substitui outro 10 para completar a trinca.</p>
+      </div>
+      <div class="howto-example">
+        <strong>Quadra com um coringa</strong>
+        <div class="howto-cards"><span class="howto-card">10♣</span><span class="howto-card howto-red">10♦</span><span class="howto-card howto-red">10♦</span><span class="howto-card howto-joker">🃏</span></div>
+        <p>O coringa representa o quarto 10. A repetição de 10♦ é possível porque há dois baralhos.</p>
+      </div>
+      <div class="howto-example">
+        <strong>Trinca com dois coringas</strong>
+        <div class="howto-cards"><span class="howto-card">9♠</span><span class="howto-card howto-joker">🃏</span><span class="howto-card howto-joker">🃏</span></div>
+        <p>Os dois coringas representam outras duas cartas de valor 9, formando uma trinca válida.</p>
+      </div>
+      <p><strong>Atenção:</strong> o símbolo 🃏 (assim como ★ no exemplo anterior) representa visualmente um coringa. Na partida, os coringas são cartas comuns definidas pela vira.</p>
       <hr>
-
+      <h2 id="compra">🎴 Compra e descarte</h2>
+      <p>Em seu turno, o jogador pode comprar do monte ou pegar a carta visível do lixo, quando houver uma disponível. Depois de organizar sua mão, pode descartar uma carta ou declarar uma batida válida, conforme a combinação formada.</p>
+      <p>Uma tentativa de batida inválida pode deixar o jogador <strong>queimado</strong>, impedindo que pegue cartas do lixo durante aquela rodada.</p>
+      <hr>
+      <h2 id="bati">🏆 Formas de batida</h2>
+      <p>Existem três modalidades principais. As cartas de cada grupo devem formar jogos válidos, como sequências ou trincas.</p>
+<div class="howto-example"><strong>1. Batida tradicional — 1 ponto</strong><div class="howto-cards"><span class="howto-card  ">3♣</span><span class="howto-card  ">4♣</span><span class="howto-card  ">5♣</span></div><div class="howto-cards"><span class="howto-card howto-red ">7♥</span><span class="howto-card howto-red ">8♥</span><span class="howto-card howto-red ">9♥</span></div><div class="howto-cards"><span class="howto-card  ">Q♣</span><span class="howto-card howto-red ">Q♦</span><span class="howto-card  ">Q♠</span></div><p>Três jogos de três cartas (3 + 3 + 3). Na jogada com dez cartas na mão, a carta excedente pode ser descartada.</p></div><div class="howto-example"><strong>2. Quadra e Quina — 1 ponto</strong><div class="howto-cards"><span class="howto-card  ">4♣</span><span class="howto-card  ">5♣</span><span class="howto-card  ">6♣</span><span class="howto-card  ">7♣</span></div><div class="howto-cards"><span class="howto-card howto-red ">9♥</span><span class="howto-card howto-red ">10♥</span><span class="howto-card howto-red ">J♥</span><span class="howto-card howto-red ">Q♥</span><span class="howto-card howto-red ">K♥</span></div><p>Um jogo de quatro cartas e outro de cinco cartas (4 + 5).</p></div><div class="howto-example"><strong>3. Bater com as Dez — 2 pontos</strong><div class="howto-cards"><span class="howto-card  ">3♣</span><span class="howto-card  ">4♣</span><span class="howto-card  ">5♣</span></div><div class="howto-cards"><span class="howto-card howto-red ">7♥</span><span class="howto-card howto-red ">8♥</span><span class="howto-card howto-red ">9♥</span></div><div class="howto-cards"><span class="howto-card  ">J♠</span><span class="howto-card  ">Q♠</span><span class="howto-card  ">K♠</span><span class="howto-card  ">A♠</span></div><p>Dois jogos de três cartas e um jogo de quatro cartas (3 + 3 + 4), totalizando dez cartas.</p></div>      <p>Também é possível declarar <strong>BATI</strong> fora do próprio turno, respeitando a prioridade do jogador da vez. Uma tentativa inválida pode deixar o jogador <strong>Queimado</strong>.</p>
+      <hr>
       <h2 id="jogar-vira">🎴 Jogar com a Vira</h2>
-
-      <p>
-        Depois que todos decidirem entre Jogar e Correr, o primeiro jogador
-        que realizará a compra possui uma opção exclusiva:
-        <strong>Jogar com a Vira</strong>.
-      </p>
-
-      <p>
-        Essa opção existe porque, no início da rodada, o lixo ainda está vazio.
-        Enquanto os jogadores seguintes poderão escolher entre comprar do monte
-        ou pegar a carta do lixo, o primeiro comprador ainda não possui essa
-        segunda opção.
-      </p>
-
-      <p>
-        Ao escolher <strong>Jogar com a Vira</strong>:
-      </p>
-
-      <ul>
-        <li>
-          a carta virada fica disponível para aquele jogador como uma carta normal;
-        </li>
-
-        <li>
-          ela poderá ser utilizada posteriormente em um dos jogos da sua batida;
-        </li>
-
-        <li>
-          ela também poderá ser descartada normalmente;
-        </li>
-
-        <li>
-          se for descartada, passa a ser a carta do lixo;
-        </li>
-
-        <li>
-          o próximo jogador poderá pegá-la do lixo normalmente, inclusive para bater.
-        </li>
-      </ul>
-
-      <div class="howto-example">
-        <strong>Importante:</strong><br>
-        Somente o primeiro jogador que realizará a compra poderá escolher
-        Jogar com a Vira. Os demais jogadores não possuem essa opção.
-      </div>
-
+      <p>O <strong>primeiro jogador que realizará a compra</strong> tem uma opção exclusiva: escolher jogar com a carta virada. Isso compensa o fato de o lixo ainda estar vazio na primeira compra da rodada.</p>
+      <p>Ao escolher essa opção, ele utiliza a vira como uma carta normal, podendo empregá-la em seus jogos ou descartá-la. Se descartada, a carta passa a integrar o lixo e poderá ser aproveitada pelos jogadores seguintes.</p>
+      <div class="howto-example"><strong>Importante:</strong><p>Somente o primeiro jogador que fará a compra pode escolher <strong>Jogar com a Vira</strong>. Não é uma opção oferecida aos demais jogadores.</p></div>
       <hr>
-
-      <h2 id="correr">⚪ Correr</h2>
-
-      <p>Ao escolher <strong>Correr</strong>:</p>
-
-      <ul>
-        <li>suas cartas retornam ao monte;</li>
-        <li>você não participa daquela rodada;</li>
-        <li>você perde apenas <strong>1 ponto</strong>.</li>
-      </ul>
-
-      <p>
-        Muitas vezes correr é uma excelente estratégia para evitar uma perda maior.
-      </p>
-
-      <hr>
-
-      <h2 id="marra">⚔ Marra</h2>
-
-      <p>
-        Quando um jogador fica com apenas <strong>1 ponto</strong>,
-        entra automaticamente na Marra.
-      </p>
-
-      <ul>
-        <li>não pode correr;</li>
-        <li>é obrigado a jogar;</li>
-        <li>se perder, é eliminado;</li>
-        <li>se vencer, continua com 1 ponto e permanece na Marra.</li>
-      </ul>
-
-      <hr>
-
-      <h2 id="bati">🏆 Formas de Batida</h2>
-
-      <p>O Cacheta Play permite as seguintes formas de bater:</p>
-
-      <ul>
-        <li>
-          <strong>Batida Simples</strong><br>
-          3 jogos com uma carta para descarte, ou 3 jogos sem descarte.
-        </li>
-
-        <li>
-          <strong>Batida de Dez</strong><br>
-          2 jogos de 3 cartas e 1 jogo de 4 cartas, sem descarte.
-        </li>
-
-        <li>
-          <strong>Batida de Quadra e Quina</strong><br>
-          1 jogo de 4 cartas e 1 jogo de 5 cartas, sem descarte.
-        </li>
-      </ul>
-
-      <p>
-        O jogador pode declarar <strong>BATI</strong> inclusive fora do seu turno,
-        respeitando a prioridade do jogador da vez.
-      </p>
-
-      <p>
-        Se a tentativa não formar uma batida válida, o jogador fica
-        <strong>Queimado</strong> e não poderá pegar cartas do lixo naquela rodada.
-      </p>
-
-      <hr>
-
       <h2 id="bater-vira">🏆 Bater com a Vira</h2>
-
-      <p>
-        Antes que seja realizada a primeira compra da rodada, qualquer jogador
-        que tenha escolhido <strong>Jogar</strong> poderá declarar
-        <strong>BATI com a Vira</strong>.
-      </p>
-
-      <p>
-        Diferentemente da opção Jogar com a Vira, o direito de tentar uma
-        batida imediata não é exclusivo do primeiro comprador.
-      </p>
-
-      <p>
-        Ao declarar <strong>BATI com a Vira</strong>:
-      </p>
-
-      <ul>
-        <li>
-          o jogador deverá selecionar a vira junto com as cartas de um dos seus jogos;
-        </li>
-
-        <li>
-          a vira poderá ser utilizada no primeiro, no segundo ou no terceiro jogo;
-        </li>
-
-        <li>
-          a ordem em que os jogos são baixados não é importante;
-        </li>
-
-        <li>
-          a vira deverá obrigatoriamente fazer parte de pelo menos um jogo válido;
-        </li>
-
-        <li>
-          o jogador poderá utilizar nove cartas nos jogos e deixar uma carta
-          física para descarte, como em uma batida normal;
-        </li>
-
-        <li>
-          também poderá utilizar todas as cartas, desde que a combinação forme
-          uma das batidas válidas do Cacheta Play.
-        </li>
-      </ul>
-
-      <div class="howto-example">
-        <strong>Importante:</strong><br>
-        A opção Bater com a Vira fica disponível apenas antes da primeira compra.
-        Assim que uma carta for comprada, essa oportunidade termina.
-      </div>
-
-      <p>
-        Se mais de um jogador declarar BATI com a Vira, será respeitada a
-        prioridade do jogador que está na vez.
-      </p>
-
-      <p>
-        Caso a tentativa seja cancelada ou não forme uma batida válida,
-        o jogador ficará <strong>Queimado</strong>.
-      </p>
-
+      <p><strong>Antes da primeira compra da rodada</strong>, um jogador que já tenha uma combinação pronta ao utilizar a carta virada pode tentar uma batida imediata com a vira.</p>
+      <p>Nessa batida, a vira deve fazer parte de um dos jogos válidos. Ela pode completar uma sequência, uma trinca ou outra combinação permitida. A ordem dos jogos não altera a validade da batida.</p>
+      <p>Essa possibilidade é diferente de <strong>Jogar com a Vira</strong>: a batida imediata com a vira não é exclusiva do primeiro comprador. Se houver declarações simultâneas, respeita-se a prioridade do jogador da vez.</p>
+      <div class="howto-example"><strong>Prazo:</strong><p>Depois que ocorrer a primeira compra, a oportunidade de bater imediatamente com a vira termina. Uma tentativa cancelada ou inválida pode deixar o jogador queimado.</p></div>
       <hr>
-
-      <h2 id="pontuacao">💰 Pontuação</h2>
-
+      <h2 id="pontuacao">⭐ Pontuação</h2>
       <table class="rules-table">
-        <thead>
-          <tr>
-            <th>Situação</th>
-            <th>Resultado</th>
-          </tr>
-        </thead>
-
+        <thead><tr><th>Tipo de batida</th><th>Combinação</th><th>Pontos</th></tr></thead>
         <tbody>
-          <tr>
-            <td>Correr</td>
-            <td>−1 ponto</td>
-          </tr>
-
-          <tr>
-            <td>Jogar e perder</td>
-            <td>−2 pontos</td>
-          </tr>
-
-          <tr>
-            <td>Marra e perder</td>
-            <td>Eliminado</td>
-          </tr>
-
-          <tr>
-            <td>Marra e vencer</td>
-            <td>Permanece com 1 ponto</td>
-          </tr>
-
-          <tr>
-            <td>Último jogador vivo</td>
-            <td>Campeão</td>
-          </tr>
+          <tr><td>Tradicional</td><td>3 + 3 + 3</td><td>1 ponto</td></tr>
+          <tr><td>Quadra e Quina</td><td>4 + 5</td><td>1 ponto</td></tr>
+          <tr><td>Bater com as Dez</td><td>3 + 3 + 4</td><td><strong>2 pontos</strong></td></tr>
         </tbody>
       </table>
-
+      <p><strong>Vence a partida o primeiro jogador a alcançar 5 pontos.</strong></p>
       <hr>
-
       <h2 id="dicas">💡 Dicas</h2>
-
       <ul>
-        <li>Nem sempre vale a pena disputar todas as rodadas.</li>
-        <li>Correr também faz parte da estratégia.</li>
-        <li>Observe quais jogadores estão na Marra.</li>
-
-        <li>
-          Administrar seus pontos é tão importante quanto montar bons jogos.
-        </li>
-
-        <li>
-          Utilize sua posição e a ordem de decisão de forma estratégica.
-        </li>
-
-        <li>
-          Se você for o primeiro comprador, avalie cuidadosamente se vale a pena
-          Jogar com a Vira.
-        </li>
-
-        <li>
-          Antes da primeira compra, confira se sua mão permite uma batida
-          imediata utilizando a vira.
-        </li>
-
-        <li>
-          Antes de declarar BATI, confira cuidadosamente todos os seus jogos.
-        </li>
+        <li>Organize suas cartas por naipe e valor para reconhecer sequências e trincas.</li>
+        <li>Observe a vira: os coringas mudam a cada rodada.</li>
+        <li>Confira todas as combinações antes de declarar BATI.</li>
+        <li>Se for o primeiro comprador, avalie a opção de jogar com a vira.</li>
+        <li>Antes da primeira compra, verifique se a vira permite uma batida imediata.</li>
+        <li>Lembre-se: Bater com as Dez vale 2 pontos.</li>
       </ul>
-
-      <div class="cp-alert howto-final-alert">
-        As fichas utilizadas no Cacheta Play são moedas virtuais destinadas
-        exclusivamente ao entretenimento dentro da plataforma.
-      </div>
-
-      <div class="cp-actions">
-        <a href="./index.html" class="cp-btn cp-btn-primary">
-          ← Voltar ao início
-        </a>
-      </div>
+      <div class="cp-alert howto-final-alert">No modo Recreativo, as fichas são virtuais e destinadas ao entretenimento na plataforma. As condições do modo Competição são apresentadas nas páginas específicas desse modo.</div>
+      <div class="cp-actions"><a href="./index.html" class="cp-btn cp-btn-primary">← Voltar ao início</a></div>
 
     </section>
   </main>

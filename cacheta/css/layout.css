@@ -30,8 +30,8 @@ body{
 ============================= */
 #game{
   min-height: 100vh; 
-  background: #0b3d2e;
-  background-image: url("/assets/image/mesa-cachetao.png");/* fundo roxo/mesa gigante */
+  background: #061B42;
+  background-image: url("/assets/image/mesa-cachetao.png");/* fundo mesa desktop */
   background-size: 95% 600px;
   background-position: center top;
   background-repeat: no-repeat;  
@@ -46,7 +46,7 @@ body{
   #game{
     padding: 12px 10px;
     background-size: 110% 560px;
-    background-image: url("/assets/image/bg-verde.png");/* fundo roxo/mesa gigante */
+    background-image: url("/assets/image/game-mobile.png");/* fundo mesa mobile*/
   }
 }
 
@@ -401,7 +401,7 @@ top: 120px;
 ============================= */
 #tablesScreen{ padding: 16px; }
 
-/* tela da sala Verde */
+/* tela da sala */
 #tablesScreen {
   width: 100% !important;
   max-width: 100% !important;
@@ -416,8 +416,8 @@ top: 120px;
 
   /* 🎰 FUNDO PROFISSIONAL */
   background:
-    linear-gradient(rgba(0, 80, 0, 0.50), rgba(0, 60, 0, 0.55)),
-    url('/assets/image/bg-g.png') no-repeat center center;
+    #0874D9
+    url('/assets/image/bg-az.png') no-repeat center center;
 
   background-size: cover;
   background-attachment: fixed;
@@ -874,8 +874,8 @@ top: 120px;
 }
 
 .home-logo img {
-  max-width: 280px;
-  width: 80%;
+  max-width: 450px;
+  width: 100%;
   height: auto;
   display: block;
   margin: 20px auto 0;
@@ -887,10 +887,11 @@ top: 120px;
   transition: .25s;
 }
 
-.home-logo img:hover{
+.home-logo img:hover {
   transform: translateY(-3px);
   box-shadow: 0 22px 45px rgba(0,0,0,.38);
 }
+
 
 .home-menu{
   width: 100%;
@@ -983,17 +984,30 @@ top: 120px;
     align-items: stretch;
   }
 
-  #homeScreen .home-menu button{
+  /* ==========================================
+   CACHETA PLAY — BOTÕES DO MENU PRINCIPAL
+========================================== */
+
+  #homeScreen .home-menu button {
     padding: 14px 14px;
     border-radius: 16px;
-    border: none;
+
     color: #fff;
     font-size: 18px;
     font-weight: 900;
     cursor: pointer;
-    background: linear-gradient(180deg,#a51f36,#731726);
-    box-shadow: 0 8px 18px rgba(0,0,0,.20);
-    border: 1px solid rgba(212,175,55,.30);
+
+    background: linear-gradient(
+      180deg,
+      #1685E8 0%,
+      #0754A8 100%
+    );
+
+    border: 1px solid rgba(213, 163, 44, .45);
+
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, .15),
+      0 8px 18px rgba(0, 0, 0, .25);
   }
 
   #homeScreen .home-menu button:hover{
@@ -1006,15 +1020,26 @@ top: 120px;
     font-size: 20px;
   }
 
-  /* status à direita (compacto) */
-  #homeScreen .home-status{
-    border-radius: 16px;
-    padding: 14px;
-    border: 1px solid rgba(0,0,0,0.06);
-    background: linear-gradient(180deg, #06391f, #032514);
-    border: 1px solid rgba(212,175,55,.35);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 22px rgba(0,0,0,.18);
-  }
+  /* ==========================================
+   CACHETA PLAY — STATUS ONLINE
+========================================== */
+
+#homeScreen .home-status {
+  border-radius: 16px;
+  padding: 14px;
+
+  background: linear-gradient(
+    180deg,
+    #10376B 0%,
+    #061B42 100%
+  );
+
+  border: 1px solid rgba(213, 163, 44, .38);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 10px 22px rgba(0, 0, 0, .25);
+}
 
   #homeScreen .panel-title{
     font-weight: 900;
@@ -1039,24 +1064,179 @@ top: 120px;
   font-weight: 700;
 }
 
-  /* banner */
-  .home-banner {
+  /* ==========================================
+   CACHETA PLAY — BANNER
+========================================== */
+
+/* ==========================================
+   CACHETA PLAY — BANNER DE OUTROS JOGOS
+========================================== */
+
+.home-banner {
   width: min(95%, 96vw);
-  height: 120px;
+  height: auto;
+  min-height: 120px;
   margin: 14px auto;
-  padding: 18px 28px;
+  padding: 12px;
+
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+
+  box-sizing: border-box;
+
+  background: linear-gradient(
+    180deg,
+    #10376B 0%,
+    #061B42 100%
+  );
+
+  border: 1px solid rgba(213, 163, 44, .38);
   border-radius: 16px;
 
+  box-shadow: 0 10px 25px rgba(0, 0, 0, .25);
+}
+
+/* Cartões dos jogos */
+
+.home-banner-game {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
+  justify-content: center;
 
-  background: linear-gradient(135deg, #07351f, #041f14);
-  border: 1px solid rgba(255,255,255,0.12);
-  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  min-height: 110px;
+  padding: 14px;
+  box-sizing: border-box;
 
+  border-radius: 12px;
+  text-decoration: none;
+
+  transition:
+    transform .2s ease,
+    box-shadow .2s ease,
+    filter .2s ease;
+}
+
+
+/* ==========================================
+   TÍTULO DENTRO DO BANNER
+========================================== */
+
+.home-banner-heading {
+  grid-column: 1 / -1;
+
+  margin: 2px 0 0;
+  padding: 4px 0;
+
+  text-align: center;
+  color: #FFFFFF;
+
+  font-size: 18px;
+  font-weight: 900;
+
+  text-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+
+@media (max-width: 600px) {
+  .home-banner-heading {
+    font-size: 16px;
+  }
+}
+
+
+.home-banner-game:hover {
+  transform: translateY(-3px);
+  filter: brightness(1.08);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .25);
+}
+
+.home-banner-game-logo {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.home-banner-game {
+  gap: 16px;
+}
+
+.home-banner-game-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+
+  text-align: center;
+}
+
+.home-banner-game-title {
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.home-banner-game-sub {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.home-banner-game-button {
+  display: inline-block;
+  margin-top: 5px;
+  padding: 7px 16px;
+
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+/* Cachetão Pro — verde */
+
+.home-banner-cachetao {
+  background: linear-gradient(180deg, #23663F, #103A25);
+  border: 1px solid rgba(213, 163, 44, .55);
   color: #fff;
+}
+
+.home-banner-cachetao .home-banner-game-button {
+  background: #D5A32C;
+  color: #061B42;
+}
+
+/* Pontinho Play — claro */
+
+.home-banner-pontinho {
+  background: linear-gradient(180deg, #FFFFFF, #E9EEF5);
+  border: 1px solid rgba(213, 163, 44, .55);
+  color: #061B42;
+}
+
+.home-banner-pontinho .home-banner-game-button {
+  background: #0754A8;
+  color: #fff;
+}
+
+/* Mobile */
+
+@media (max-width: 600px) {
+  .home-banner {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .home-banner-game {
+    min-height: 100px;
+    padding: 12px;
+  }
+
+  .home-banner-game-title {
+    font-size: 18px;
+  }
+
+  .home-banner-game-sub {
+    font-size: 12px;
+  }
 }
 
 .home-banner-text {
@@ -1151,7 +1331,7 @@ top: 120px;
 }
 
 /* =============================
-   HOME DESKTOP: centralizar + background nas laterais
+   HOME DESKTOP: imagem de fundo e gradiente
 ============================= */
 @media (min-width: 900px){
 html, body {
@@ -1159,10 +1339,10 @@ html, body {
   margin: 0;
 
   background:
-    linear-gradient(rgba(0, 70, 25, 0.35), rgba(0, 45, 20, 0.55)),
-    url("/assets/image/bg-g.png") center / cover fixed no-repeat;
+    /*linear-gradient(rgba(0, 70, 25, 0.35), rgba(0, 45, 20, 0.55)),*/
+    url("/assets/image/bg-blue.png") center / cover fixed no-repeat;
 
-  background-color: #063f1f;
+  /*background-color: #063f1f;*/
 }
 
   /* container da home ocupa a tela e centraliza tudo */
@@ -1192,13 +1372,6 @@ html, body {
   pointer-events: auto;
   cursor: pointer;
 }
-
-/*animação do pote*/
-/*
-.pot-update {
-  transform: scale(1.15);
-  transition: transform 0.2s ease;
-}*/
 
 /* Contador Jogador - relogio*/
 .table-visual{
@@ -1691,14 +1864,27 @@ html, body {
   gap: 12px;
 }
 
-.home-usercard{
+/* ==========================================
+   CACHETA PLAY — PAINEL DO USUÁRIO
+========================================== */
+
+.home-usercard {
   border-radius: 20px;
   padding: 12px 14px;
   color: #fff;
   box-sizing: border-box;
-  background: linear-gradient(180deg, #06391f, #032514);
-  border: 1px solid rgba(212,175,55,.38);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 22px rgba(0,0,0,.18);
+
+  background: linear-gradient(
+    180deg,
+    #10376B 0%,
+    #061B42 100%
+  );
+
+  border: 1px solid rgba(213, 163, 44, .38);
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 10px 22px rgba(0, 0, 0, .25);
 }
 
 .home-usercard-row{
@@ -1895,21 +2081,37 @@ html, body {
   border: none !important;
 }
 
-.home-footer{
+/* ==========================================
+   CACHETA PLAY — RODAPÉ
+========================================== */
+
+.home-footer {
   width: 95%;
-  margin-top: 30px;
+  margin-top: 10px;
 
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
   padding: 12px 18px;
-  background: rgba(0,0,0,.18);
-  border-bottom: 1px solid rgba(212,175,55,.25);
-  color: rgba(255,255,255,.75);
-  font-size: 13px;
-}
 
+  background: linear-gradient(
+    180deg,
+    #10376B 0%,
+    #061B42 100%
+  );
+
+  border: 1px solid rgba(213, 163, 44, .38);
+  border-bottom: 2px solid rgba(213, 163, 44, .55);
+
+  color: rgba(255, 255, 255, .85);
+  font-size: 13px;
+  border-radius: 10px;
+
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 10px 22px rgba(0, 0, 0, .20);
+}
 .home-footer a{
   color: #dbeafe;
   text-decoration: none;
@@ -2398,25 +2600,30 @@ HOME - CARTEIRA PIX
    MENU TOPO - LOGO + LINKS
 ========================= */
 
-.top-nav{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end;
-  gap:18px;
+.top-nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+  width: 95%;
 
-  padding:12px 22px;
-  margin-bottom:22px;
+  padding: 12px 22px;
+  margin-bottom: 22px;
 
-  background:rgba(4,45,25,.78);
+  background: linear-gradient(
+    180deg,
+    #10376B 10%,
+    #061B42 100%
+  );
 
-  border:1px solid rgba(212,175,55,.18);
-  border-bottom:2px solid rgba(212,175,55,.28);
+  border: 1px solid rgba(213, 163, 44, .35);
+  border-bottom: 2px solid rgba(213, 163, 44, .55);
 
-  border-radius:14px;
+  border-radius: 14px;
 
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.05),
-    0 10px 22px rgba(0,0,0,.20);
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 10px 22px rgba(0, 0, 0, .25);
 
   backdrop-filter: blur(6px);
 }

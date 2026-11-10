@@ -1,6 +1,6 @@
 {
   "name": "Cacheta Play",
-  "short_name": "Cachetão",
+  "short_name": "Cacheta Play",
   "description": "Jogo online de Cacheta Play",
   "start_url": "./index.html",
   "scope": "./",

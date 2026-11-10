@@ -3,9 +3,12 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const pool = require("../config/db");
 const { findUserByEmail, findUserById, createUser, logAdminAction } = require("../services/userService");
+const { createEmailVerificationToken, verifyEmailToken} = require("../services/emailVerificationService");
 const { requireAuth, requireAdmin } = require("../middleware/auth");
 const router = express.Router();
-
+const { sendVerificationEmail, sendPasswordResetEmail } = require("../services/emailService");
+const { createPasswordResetToken } = require("../services/passwordResetService");
+const { resetPasswordWithToken } = require("../services/passwordResetService");
 
 function sanitizeUser(user) {
   return {
@@ -52,6 +55,7 @@ router.post("/signup", async (req, res) => {
       });
     }
 
+    
     if (!password || password.length < 6) {
       return res.status(400).json({
         ok: false,
@@ -59,7 +63,83 @@ router.post("/signup", async (req, res) => {
       });
     }
 
+    // =====================================================
+    // CLOUDFLARE TURNSTILE — VALIDAÇÃO NO SERVIDOR
+    // =====================================================
+
+    const turnstileToken = String(req.body?.turnstileToken || "");
+    const turnstileSecret = process.env.TURNSTILE_SECRET_KEY;
+
+    if (!turnstileSecret) {
+      console.error("[AUTH] TURNSTILE_SECRET_KEY não configurada.");
+
+      return res.status(503).json({
+        ok: false,
+        message: "Verificação de segurança indisponível.",
+      });
+    }
+
+    if (!turnstileToken) {
+      return res.status(400).json({
+        ok: false,
+        message: "Confirme a verificação Sou humano antes de criar sua conta.",
+      });
+    }
+
+    let turnstileResult;
+
+    try {
+      const response = await fetch(
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({
+            secret: turnstileSecret,
+            response: turnstileToken,
+          }),
+          signal: AbortSignal.timeout(10000),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Cloudflare HTTP ${response.status}`);
+      }
+
+      turnstileResult = await response.json();
+
+    } catch (error) {
+      console.error("[AUTH] Erro na validação Turnstile:", error);
+
+      return res.status(503).json({
+        ok: false,
+        message: "Não foi possível validar a verificação de segurança. Tente novamente.",
+      });
+    }
+
+    if (
+      turnstileResult?.success !== true ||
+      !["localhost", "cachetaplay.net.br"].includes(turnstileResult.hostname)
+    ) {
+      console.warn(
+        "[AUTH] Verificação Turnstile recusada:",
+        turnstileResult?.["error-codes"]
+      );
+
+      return res.status(403).json({
+        ok: false,
+        message: "Verificação Sou humano inválida ou expirada. Atualize a página e tente novamente.",
+      });
+    }
+
+    // =====================================================
+    // CADASTRO ORIGINAL — SEM ALTERAÇÕES
+    // =====================================================
+
     const existing = await findUserByEmail(email);
+
     if (existing) {
       return res.status(409).json({
         ok: false,
@@ -69,17 +149,36 @@ router.post("/signup", async (req, res) => {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const user = await createUser({
-      username,
-      email,
-      passwordHash,
-      avatarUrl,
-    });
+      const user = await createUser({
+        username,
+        email,
+        passwordHash,
+        avatarUrl,
+      });
 
-    return res.status(201).json({
-      ok: true,
-      user: sanitizeUser(user),
-    });
+      // Gera o token e envia o e-mail de confirmação.
+      try {
+        const token = await createEmailVerificationToken(user.id);
+
+        await sendVerificationEmail(user.email, token);
+
+        console.log(
+          "[AUTH] E-mail de confirmação enviado:",
+          user.email
+        );
+
+      } catch (emailError) {
+        console.error(
+          "[AUTH] Erro ao preparar ou enviar confirmação de e-mail:",
+          emailError
+        );
+      }
+
+      return res.status(201).json({
+        ok: true,
+        user: sanitizeUser(user),
+      });
+
   } catch (err) {
     console.error("POST /signup error:", err);
     return res.status(500).json({
@@ -88,6 +187,368 @@ router.post("/signup", async (req, res) => {
     });
   }
 });
+
+
+/* =========================================================
+   REENVIO DE CONFIRMAÇÃO DE E-MAIL
+========================================================= */
+
+router.post("/resend-verification", async (req, res) => {
+  const genericResponse = {
+    ok: true,
+    message:
+      "Se o e-mail estiver cadastrado e ainda não confirmado, você receberá um link de confirmação.",
+  };
+
+  try {
+    const email = String(req.body?.email || "")
+      .trim()
+      .toLowerCase();
+
+    // Não revela se o endereço existe no cadastro.
+    if (!email || !email.includes("@")) {
+      return res.json(genericResponse);
+    }
+
+    const user = await findUserByEmail(email);
+
+    // Conta inexistente ou já confirmada.
+    if (!user || user.email_verified === true) {
+      return res.json(genericResponse);
+    }
+
+    // Limita o reenvio a uma solicitação a cada 5 minutos,
+    // utilizando o token já armazenado no PostgreSQL.
+    const recentToken = await pool.query(
+      `SELECT 1
+       FROM email_verification_tokens
+       WHERE user_id = $1
+         AND expires_at > NOW() + INTERVAL '23 hours 55 minutes'
+       LIMIT 1`,
+      [user.id]
+    );
+
+    if (recentToken.rows.length > 0) {
+      return res.json(genericResponse);
+    }
+
+    // Gera novo token e invalida o anterior.
+    const token = await createEmailVerificationToken(user.id);
+
+    // Envia a confirmação pelo serviço existente.
+    await sendVerificationEmail(user.email, token);
+
+    console.log(
+      "[AUTH] Reenvio de confirmação solicitado com sucesso."
+    );
+
+    return res.json(genericResponse);
+
+  } catch (err) {
+    console.error(
+      "[AUTH] Erro no reenvio de confirmação:",
+      err
+    );
+
+    return res.status(500).json({
+      ok: false,
+      message: "Não foi possível processar a solicitação.",
+    });
+  }
+});
+
+
+
+/* =========================================================
+   SOLICITAÇÃO DE RECUPERAÇÃO DE SENHA
+========================================================= */
+
+router.post("/forgot-password", async (req, res) => {
+  const genericResponse = {
+    ok: true,
+    message:
+      "Se o e-mail estiver cadastrado, você receberá um link de recuperação de senha.",
+  };
+
+  try {
+    const email = String(req.body?.email || "")
+      .trim()
+      .toLowerCase();
+
+    // Não revela se o e-mail existe no cadastro.
+    if (!email || !email.includes("@")) {
+      return res.json(genericResponse);
+    }
+
+    const user = await findUserByEmail(email);
+
+    if (!user) {
+      return res.json(genericResponse);
+    }
+
+    // Evita gerar vários links em um intervalo curto.
+    const recentToken = await pool.query(
+      `SELECT 1
+       FROM password_reset_tokens
+       WHERE user_id = $1
+         AND created_at > NOW() - INTERVAL '5 minutes'
+       LIMIT 1`,
+      [user.id]
+    );
+
+    if (recentToken.rows.length > 0) {
+      return res.json(genericResponse);
+    }
+
+    // Gera um token seguro, válido por 30 minutos.
+    // Tokens anteriores são invalidados pelo serviço.
+    const token = await createPasswordResetToken(user.id);
+
+    // Envia o link pelo SMTP já configurado.
+    await sendPasswordResetEmail(user.email, token);
+
+    console.log(
+      "[AUTH] Solicitação de recuperação de senha processada."
+    );
+
+    return res.json(genericResponse);
+
+  } catch (err) {
+    console.error(
+      "[AUTH] Erro na recuperação de senha:",
+      err
+    );
+
+    return res.status(500).json({
+      ok: false,
+      message: "Não foi possível processar a solicitação.",
+    });
+  }
+});
+
+
+/* =========================================================
+   REDEFINIÇÃO DE SENHA POR E-MAIL
+========================================================= */
+
+router.post("/reset-password", async (req, res) => {
+  try {
+    const token = String(req.body?.token || "");
+    const newPassword = req.body?.newPassword;
+
+    if (!token || typeof newPassword !== "string") {
+      return res.status(400).json({
+        ok: false,
+        message: "Token e nova senha são obrigatórios.",
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        ok: false,
+        message: "A nova senha deve ter pelo menos 6 caracteres.",
+      });
+    }
+
+    const result = await resetPasswordWithToken(
+      token,
+      newPassword
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        ok: false,
+        message:
+          "O link de recuperação é inválido ou expirou. Solicite um novo link.",
+      });
+    }
+
+    return res.json({
+      ok: true,
+      message: "Senha redefinida com sucesso!",
+    });
+
+  } catch (err) {
+    console.error("[AUTH] Erro ao redefinir senha:", err);
+
+    return res.status(500).json({
+      ok: false,
+      message: "Não foi possível redefinir a senha.",
+    });
+  }
+});
+
+
+/* =========================================================
+   CONFIRMAÇÃO DE E-MAIL
+========================================================= */
+
+router.get("/verify-email", async (req, res) => {
+  // Página de resultado da confirmação de e-mail
+  function renderVerificationPage(success, title, message) {
+    const color = success ? "#22c55e" : "#f87171";
+    const icon = success ? "✓" : "!";
+    const loginUrl = "http://localhost:3004/login.html";
+
+    return `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Confirmação de e-mail - Cacheta Play</title>
+
+        <style>
+          * {
+            box-sizing: border-box;
+          }
+
+          body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(145deg, #071a40, #123b91);
+            font-family: Arial, Helvetica, sans-serif;
+            color: #fff;
+          }
+
+          .verification-card {
+            width: 100%;
+            max-width: 440px;
+            padding: 42px 28px;
+            text-align: center;
+            background: #1d4ed8;
+            border: 1px solid rgba(212,175,55,.38);
+            border-radius: 22px;
+            box-shadow: 0 16px 36px rgba(0,0,0,.35);
+          }
+
+          .verification-icon {
+            width: 82px;
+            height: 82px;
+            margin: 0 auto 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid ${color};
+            border-radius: 50%;
+            color: ${color};
+            font-size: 46px;
+            font-weight: bold;
+          }
+
+          h1 {
+            margin: 0 0 18px;
+            color: #ffd86b;
+            font-size: 28px;
+            line-height: 1.3;
+          }
+
+          p {
+            margin: 0 0 30px;
+            color: rgba(255,255,255,.9);
+            font-size: 16px;
+            line-height: 1.7;
+          }
+
+          .login-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            border-radius: 14px;
+            background: linear-gradient(180deg,#a51f36,#731726);
+            border: 1px solid rgba(212,175,55,.30);
+            box-shadow: 0 8px 18px rgba(0,0,0,.24);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 900;
+            text-decoration: none;
+            transition: transform .15s, filter .15s;
+          }
+
+          .login-button:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.15);
+          }
+
+          .footer {
+            margin-top: 28px;
+            font-size: 13px;
+            color: rgba(255,255,255,.65);
+          }
+
+          @media (max-width: 600px) {
+            .verification-card {
+              padding: 32px 22px;
+            }
+
+            h1 {
+              font-size: 25px;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <main class="verification-card">
+          <div class="verification-icon">${icon}</div>
+
+          <h1>${title}</h1>
+
+          <p>${message}</p>
+
+          <a class="login-button" href="${loginUrl}">
+            Ir para o Login
+          </a>
+
+          <div class="footer">
+            ♠ Cacheta Play ♠
+          </div>
+        </main>
+      </body>
+      </html>
+    `;
+  }
+
+  try {
+    const token = String(req.query.token || "");
+
+    const result = await verifyEmailToken(token);
+
+    if (!result.success) {
+      return res.status(400).type("html").send(
+        renderVerificationPage(
+          false,
+          "Link inválido ou expirado",
+          "Este link de confirmação não é mais válido. Se sua conta ainda não foi confirmada, solicite um novo link pela tela de login."
+        )
+      );
+    }
+
+    return res.status(200).type("html").send(
+      renderVerificationPage(
+        true,
+        "E-mail confirmado com sucesso!",
+        "Sua conta foi verificada. Agora você já pode acessar o Cacheta Play."
+      )
+    );
+
+  } catch (err) {
+    console.error("[AUTH] Erro ao confirmar e-mail:", err);
+
+    return res.status(500).type("html").send(
+      renderVerificationPage(
+        false,
+        "Não foi possível confirmar",
+        "Ocorreu um erro ao confirmar seu e-mail. Tente novamente mais tarde."
+      )
+    );
+  }
+});
+
 
 router.post("/login", async (req, res) => {
   try {
@@ -114,6 +575,14 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({
         ok: false,
         message: "E-mail ou senha inválidos.",
+      });
+    }
+
+        // Impede login de usuários com e-mail não confirmado.
+    if (user.email_verified !== true) {
+      return res.status(403).json({
+        ok: false,
+        message: "Seu e-mail ainda não foi confirmado. Verifique sua caixa de entrada ou solicite um novo link de confirmação.",
       });
     }
 

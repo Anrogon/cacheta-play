@@ -2,7 +2,7 @@ const express = require("express");
 const pool = require("../config/db");
 const { requireAuth } = require("../middleware/auth");
 const { CHIP_PACKAGES, CASH_PACKAGES, getChipPackage, getCashPackage} = require("../config/chipPackages");
-const { createPixPayment, getPaymentById } = require("../services/mercadoPago");
+const { createPixPayment, getPaymentById, createPixOrder, getOrderById} = require("../services/mercadoPago");
 const { createWithdrawalRequest,} = require("../services/cashWalletService");
 
 
@@ -32,6 +32,15 @@ router.get("/packages", requireAuth, async (req, res) => {
 
 router.post("/deposit", requireAuth, async (req, res) => {
   try {
+        // Valida o e-mail antes de criar a transação local.
+    const payerEmail = String(req.auth?.email || "").trim();
+
+    if (!payerEmail || !payerEmail.includes("@")) {
+      return res.status(400).json({
+        ok: false,
+        message: "E-mail do usuário não disponível para pagamento.",
+      });
+    }
     const packageId = String(req.body?.packageId || "");
 
     // Mantém compatibilidade com o frontend atual:
@@ -113,28 +122,38 @@ router.post("/deposit", requireAuth, async (req, res) => {
 
     const transaction = txResult.rows[0];
 
+    
     // =====================================================
-    // GERA O PIX NO MERCADO PAGO
+    // GERA O PIX — API DE ORDERS
     // =====================================================
 
-    const mpPayment = await createPixPayment({
+    const mpOrder = await createPixOrder({
       amountCents,
       description,
-      payerEmail: req.auth.email || "cliente@pontinhoplay.com.br",
+      payerEmail,
       externalReference: transaction.id,
     });
 
-    const paymentId = mpPayment?.id || null;
+    const orderId = mpOrder?.id || null;
+
+    const mpOrderPayment =
+      mpOrder?.transactions?.payments?.[0] || null;
 
     const qrCode =
-      mpPayment?.point_of_interaction
-        ?.transaction_data
-        ?.qr_code || null;
+      mpOrderPayment?.payment_method?.qr_code || null;
 
     const qrCodeBase64 =
-      mpPayment?.point_of_interaction
-        ?.transaction_data
-        ?.qr_code_base64 || null;
+      mpOrderPayment?.payment_method?.qr_code_base64 || null;
+
+    // Mantém compatibilidade com o restante da rota.
+    const paymentId = orderId;
+
+    if (!orderId || !qrCode) {
+      throw new Error(
+        "Mercado Pago não retornou uma Order com Pix válido."
+      );
+    }
+
 
     // =====================================================
     // SALVA OS DADOS DO PIX
@@ -405,8 +424,88 @@ router.get("/deposit/:transactionId/status", requireAuth, async (req, res) => {
     // 3) CONSULTA O PAGAMENTO NO MERCADO PAGO
     // =====================================================
 
-    const mpPayment = await getPaymentById(tx.provider_payment_id);
-    const mpStatus = String(mpPayment?.status || "unknown");
+    
+    // Consulta a Order na nova API do Mercado Pago.
+    const mpOrder = await getOrderById(tx.provider_payment_id);
+
+    // =====================================================
+    // VALIDA A REFERÊNCIA E O VALOR DA ORDER
+    // =====================================================
+
+    const orderReference = String(
+      mpOrder?.external_reference || ""
+    );
+
+    const orderAmount = Number(mpOrder?.total_amount);
+    const expectedAmount = Number(tx.amount_cents);
+
+    const orderAmountCents = Math.round(orderAmount * 100);
+
+    if (
+      orderReference !== String(tx.id) ||
+      !Number.isSafeInteger(expectedAmount) ||
+      expectedAmount <= 0 ||
+      !Number.isFinite(orderAmount) ||
+      orderAmountCents !== expectedAmount
+    ) {
+      console.error("[MP] Divergência na Order:", {
+        transactionId: tx.id,
+        orderId: tx.provider_payment_id,
+        expectedAmount,
+        orderAmountCents,
+        referenceMatches: orderReference === String(tx.id)
+      });
+
+      return res.status(409).json({
+        ok: false,
+        credited: false,
+        message: "Divergência nos dados do pagamento.",
+      });
+    }
+
+
+    const orderStatus = String(mpOrder?.status || "unknown");
+
+    // =====================================================
+    // VALIDA O PAGAMENTO PIX DENTRO DA ORDER
+    // =====================================================
+
+    const orderPayments = mpOrder?.transactions?.payments;
+
+    const pixPayment =
+      Array.isArray(orderPayments) &&
+      orderPayments.length === 1
+        ? orderPayments[0]
+        : null;
+
+    const pixAmount = Number(pixPayment?.amount);
+    const pixAmountCents = Math.round(pixAmount * 100);
+
+    const validPixPayment =
+      pixPayment !== null &&
+      pixPayment.status === "processed" &&
+      pixPayment.status_detail === "accredited" &&
+      pixPayment.payment_method?.id === "pix" &&
+      pixPayment.payment_method?.type === "bank_transfer" &&
+      Number.isFinite(pixAmount) &&
+      pixAmountCents === Number(tx.amount_cents);
+
+    const orderStatusDetail = String(
+      mpOrder?.status_detail || ""
+    );
+
+    // Mantém o formato esperado pela lógica atual da carteira.
+    
+    const mpStatus =
+      orderStatus === "processed" &&
+      orderStatusDetail === "accredited" &&
+      validPixPayment
+        ? "approved"
+        : orderStatus === "processed"
+          ? "verification_required"
+          : orderStatus;
+
+
 
     if (mpStatus !== "approved") {
       await pool.query(

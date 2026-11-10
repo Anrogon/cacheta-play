@@ -6,15 +6,18 @@ let homeStatusFeedTimer = null;
 let homeStatusFeedIndex = 0;
 
 const HOME_STATUS_FEED = [
-  "💡 Nem sempre vale a pena disputar todas as rodadas.",
+  "💡 Você pode bater com quadra e quina.",
   "🃏 O coringa não pode ser descartado.",
   "🔥 Sequências devem ser formadas pelo mesmo naipe.",
   "🎴 Trincas usam cartas do mesmo valor e naipes diferentes.",
-  "🎯 Bater sem descarte também encerra a rodada.",
+  "🎯 Bater com a dez, sem descarte, vale 2 pontos.",
+  "🎯 Se você é o mão da rodada, pode jogar com a vira.",
   "⚡ Confira todas as combinações antes de declarar BATI.",
-  "🃏 É permitido usar dois coringas no mesmo jogo.",
+  "🃏 É permitido usar dois coringas em uma carta para bater.",
   "👏 Para bater, selecione as cartas e forme todos os jogos válidos.",
-  "⚪ Correr faz parte da estratégia e custa apenas 1 ponto.",
+  "⚪ Bate com descarte vale 1 ponto.",
+  "🎯 É permitido bater com a vira.",
+  "🎯 Se você está quimado, não pode pegar carta do lixo.",
 
 ];
 

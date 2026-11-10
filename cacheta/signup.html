@@ -34,7 +34,7 @@ body{
     border-radius:22px;
 
     background:
-        linear-gradient(180deg,#06391f,#032514);
+        linear-gradient(180deg,#214ee2,#1244e9);
 
     border:1px solid rgba(212,175,55,.38);
 
@@ -276,7 +276,21 @@ button{
 
 }
 
+/* Verificação Sou humano */
+.turnstile-container {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 18px;
+  max-width: 100%;
+}
+
 </style>
+
+<script
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+  async
+  defer>
+</script>
 
 </head>
 
@@ -329,8 +343,12 @@ Política de Privacidade
 
 </div>
 
-<div class="signup-info">
-  🎮 Seu avatar poderá ser escolhido posteriormente na página <strong>Perfil</strong>.
+<div class="turnstile-container">
+  <div
+    class="cf-turnstile"
+    data-sitekey="0x4AAAAAAF5ymxrIZ53DsSdH"
+    data-theme="light">
+  </div>
 </div>
 <div class="auth-actions">
 

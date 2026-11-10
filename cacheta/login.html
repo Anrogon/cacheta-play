@@ -25,9 +25,9 @@ body{
 
 .auth-card{
 
-  width:min(420px,92vw);
+  width:min(440px,94vw);
 
-  padding:30px 26px;
+  padding:34px 28px;
 
   border-radius:22px;
 
@@ -245,8 +245,15 @@ button{
 
     <div id="authMessage" class="auth-message"></div>
 
+    <div id="resendVerificationBox" class="auth-links" style="display:none;">
+      Não recebeu o e-mail de confirmação?
+      <a href="#" id="btnResendVerification">
+        Reenviar confirmação
+      </a>
+    </div>
+
     <div class="auth-links" style="margin-top:10px;">
-    Problemas para acessar? Fale com a administração.
+      <a href="./forgot-password.html">Esqueci minha senha</a>
     </div>
 
     <div class="auth-links">

@@ -28,6 +28,7 @@ async function doSignup() {
   const password = document.getElementById("signupPassword")?.value || "";
   const avatarUrl = "./assets/avatars/avatar-01.png";
   const acceptTerms = document.getElementById("acceptTerms");
+  const turnstileToken = window.turnstile?.getResponse() || "";
 
   if (!username || !email || !password) {
     showMessage("Preencha nome, e-mail e senha.", true);
@@ -38,6 +39,13 @@ async function doSignup() {
 
   if (!acceptTerms?.checked) {
     showMessage("Você precisa aceitar os Termos de Uso e a Política de Privacidade.", true);
+    signupBusy = false;
+    if (btn) btn.disabled = false;
+    return;
+  }
+
+  if (!turnstileToken) {
+    showMessage("Confirme a verificação Sou humano antes de criar sua conta.", true);
     signupBusy = false;
     if (btn) btn.disabled = false;
     return;
@@ -58,6 +66,7 @@ async function doSignup() {
         password,
         avatarUrl,
         acceptedTerms: true,
+        turnstileToken,
       }),
     });
 
@@ -67,22 +76,37 @@ async function doSignup() {
 
     if (!res.ok || !data?.ok) {
       showMessage(data?.message || "Falha ao criar conta.", true);
+
+      // Renova a verificação para uma nova tentativa.
+      window.turnstile?.reset();
+
       signupBusy = false;
       if (btn) btn.disabled = false;
       return;
     }
 
-    showMessage("Conta criada com sucesso.");
+    showMessage(
+      "Cadastro realizado com sucesso! Enviamos um link de confirmação para seu e-mail. "
+    );
 
-    setTimeout(() => {
-      window.location.href = "./login.html";
-    }, 800);
-  } catch (err) {
-    console.error("Erro no cadastro:", err);
-    showMessage(`Não foi possível conectar ao servidor de autenticação. (${err.message})`, true);
+    // Impede novo cadastro enquanto o usuário confirma o e-mail.
     signupBusy = false;
-    if (btn) btn.disabled = false;
-  }
+
+    // O usuário permanece nesta página para ler a orientação.
+    // Para acessar sua conta, deverá confirmar o e-mail
+    // e depois utilizar o botão "Entrar".
+
+
+    } catch (err) {
+      console.error("Erro no cadastro:", err);
+      showMessage(`Não foi possível conectar ao servidor de autenticação. (${err.message})`, true);
+
+      // Renova o Turnstile após falha de conexão.
+      window.turnstile?.reset();
+
+      signupBusy = false;
+      if (btn) btn.disabled = false;
+    }
 }
 
 

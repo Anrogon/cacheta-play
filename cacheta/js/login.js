@@ -67,6 +67,18 @@ async function doLogin() {
 
     if (!res.ok || !data?.ok) {
       showMessage(data?.message || "Falha no login.", true);
+
+      // Exibe o reenvio somente quando o e-mail não foi confirmado.
+      const resendBox = document.getElementById("resendVerificationBox");
+
+      if (resendBox) {
+        resendBox.style.display =
+          res.status === 403 &&
+          data?.message?.includes("e-mail ainda não foi confirmado")
+            ? "block"
+            : "none";
+      }
+
       loginBusy = false;
       if (btn) btn.disabled = false;
       return;
@@ -115,6 +127,7 @@ async function doLogin() {
     setTimeout(() => {
       redirectAfterLogin(data.user);
     }, 700);
+
   } catch (err) {
     console.error("Erro no login:", err);
     showMessage(`Não foi possível conectar ao servidor de autenticação. (${err.message})`, true);
@@ -122,6 +135,68 @@ async function doLogin() {
     if (btn) btn.disabled = false;
   }
 }
+
+
+/* =========================================================
+   REENVIAR CONFIRMAÇÃO DE E-MAIL
+========================================================= */
+
+const btnResendVerification = document.getElementById("btnResendVerification");
+
+if (btnResendVerification) {
+  btnResendVerification.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    const email = document.getElementById("loginEmail")?.value?.trim() || "";
+
+    if (!email) {
+      showMessage("Informe seu e-mail para reenviar a confirmação.", true);
+      return;
+    }
+
+    btnResendVerification.style.pointerEvents = "none";
+
+    showMessage("Solicitando novo e-mail de confirmação...");
+
+    try {
+      const res = await fetch(`${API_BASE}/auth/resend-verification`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok || !data?.ok) {
+        showMessage(
+          data?.message || "Não foi possível solicitar a confirmação.",
+          true
+        );
+        return;
+      }
+
+      showMessage(
+        data.message ||
+        "Se o e-mail estiver cadastrado e não confirmado, você receberá um link."
+      );
+
+    } catch (err) {
+      console.error("Erro ao reenviar confirmação:", err);
+
+      showMessage(
+        "Não foi possível conectar ao servidor de autenticação.",
+        true
+      );
+
+    } finally {
+      btnResendVerification.style.pointerEvents = "";
+    }
+  });
+}
+
 
 document.getElementById("btnLoginSubmit")?.addEventListener("click", doLogin);
 

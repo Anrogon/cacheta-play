@@ -388,7 +388,7 @@ router.get("/verify-email", async (req, res) => {
   function renderVerificationPage(success, title, message) {
     const color = success ? "#22c55e" : "#f87171";
     const icon = success ? "✓" : "!";
-    const loginUrl = "http://localhost:3004/login.html";
+    const loginUrl = `${process.env.FRONTEND_BASE_URL || "http://localhost:3004"}/login.html`;
 
     return `
       <!DOCTYPE html>

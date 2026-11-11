@@ -1,3 +1,7 @@
+const API_BASE =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3005/api"
+    : "/api";
 
 /* =========================================================
    CACHETA PLAY — RECUPERAÇÃO DE SENHA
@@ -34,7 +38,7 @@ async function requestPasswordRecovery() {
 
   try {
     const response = await fetch(
-      "http://localhost:3005/api/auth/forgot-password",
+      `${API_BASE}/auth/forgot-password`,
       {
         method: "POST",
         headers: {

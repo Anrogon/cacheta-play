@@ -1,3 +1,7 @@
+const API_BASE =
+  window.location.hostname === "localhost"
+    ? "http://localhost:3005/api"
+    : "/api";
 
 "use strict";
 
@@ -60,7 +64,7 @@ async function submitPasswordReset() {
 
   try {
     const response = await fetch(
-      "http://localhost:3005/api/auth/reset-password",
+      `${API_BASE}/auth/reset-password`,
       {
         method: "POST",
         headers: {

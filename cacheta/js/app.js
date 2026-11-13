@@ -201,12 +201,31 @@ if (msg.type === "table_public") {
   const table = msg.payload || {};
   if (!table.id) return;
 
+
   window.state = window.state || {};
   window.state.tables = window.state.tables || {};
 
+  const prev = window.state.tables[table.id] || {};
+
+  const mergedSeats = Array.isArray(table.seats)
+    ? table.seats.map((seat, idx) => {
+        if (!seat) return null;
+
+        const oldSeat = Array.isArray(prev.seats)
+          ? prev.seats[idx]
+          : null;
+
+        return {
+          ...oldSeat,
+          ...seat
+        };
+      })
+    : prev.seats;
+
   window.state.tables[table.id] = {
-    ...(window.state.tables[table.id] || {}),
-    ...table
+    ...prev,
+    ...table,
+    seats: mergedSeats
   };
 
   const tablesScreen = document.getElementById("tablesScreen");
@@ -382,11 +401,20 @@ if (pub.tableId) {
   const prev = window.state.tables?.[pub.tableId] || {};
 
   const mergedSeats = Array.isArray(pub.seats)
-    ? pub.seats.map((p, i) => p ? ({
+  ? pub.seats.map((p, i) => {
+      if (!p) return null;
+
+      const oldSeat = Array.isArray(prev.seats)
+        ? prev.seats[i]
+        : null;
+
+      return {
+        ...oldSeat,
         ...p,
         seat: i + 1
-      }) : null)
-    : (prev.seats || []);
+      };
+    })
+  : (prev.seats || []);
 
   window.state.tables = window.state.tables || {};
 
@@ -928,6 +956,15 @@ window.wsSendAction = wsSendAction;
 // =============================
 export function renderAll() {
 
+  const gameEl = document.getElementById("game");
+
+  if (gameEl) {
+    gameEl.classList.toggle(
+      "competition-mode",
+      String(state.tableType || "RECREATIONAL").toUpperCase() === "COMPETITION"
+    );
+  }
+
   renderPlayerInfo();
   renderHand();
   renderTable();
@@ -939,7 +976,7 @@ export function renderAll() {
   renderNextPlayerButton();
 
 
-  const gameEl = document.getElementById("game");
+  
   const gameVisible = !!gameEl && gameEl.style.display !== "none";
   const hasAnyHand =
     Array.isArray(state.players) &&

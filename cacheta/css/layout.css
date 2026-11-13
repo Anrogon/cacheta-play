@@ -144,6 +144,42 @@ top: 120px;
   background-repeat: no-repeat;
 }
 
+/* MONTE — IDENTIFICAÇÃO EXCLUSIVA DESKTOP */
+@media (min-width: 901px) {
+  .desktop-monte-wrap {
+    position: relative;
+    width: 130px;
+    height: 80px;
+    flex-shrink: 0;
+  }
+
+  .desktop-monte-label {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, .65);
+
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .desktop-monte-wrap {
+    display: contents;
+  }
+
+  .desktop-monte-label {
+    display: none;
+  }
+}
+
+
 /* LIXO */
 #lixo {
   width: 70px;
@@ -174,6 +210,37 @@ top: 120px;
   background: rgba(0, 0, 0, 0.28);
 }
 
+/* LIXO E VIRA — RÓTULOS SOMENTE DESKTOP */
+@media (min-width: 901px) {
+  #lixo,
+  #vira-area {
+    position: relative;
+  }
+
+  #lixo::after,
+  #vira-area::after {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    transform: translateX(-50%);
+
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, .65);
+    pointer-events: none;
+  }
+
+  #lixo::after {
+    content: "Lixo";
+  }
+
+  #vira-area::after {
+    content: "Vira";
+  }
+}
+
 /* CARTA REAL DA VIRA */
 .vira-card-real {
   width: 60px;
@@ -195,7 +262,18 @@ top: 120px;
   text-align: right;
   white-space: nowrap;
   text-shadow: 0 2px 4px rgba(0,0,0,.65);
-  
+}
+
+/* CORINGAS — ABAIXO DA VIRA, SOMENTE DESKTOP */
+@media (min-width: 901px) {
+  #vira-joker {
+    position: relative;
+    left: 195px;
+    margin-top: 20px;
+    font-size: 18px;
+    font-weight: 900;
+    text-align: center;
+  }
 }
 
 /* Responsivo: PILES */
@@ -2863,4 +2941,14 @@ HOME - CARTEIRA PIX
 
   pointer-events: none;
   user-select: none;
+}
+
+/* CORINGAS — IDENTIFICAÇÃO COLORIDA */
+.joker-suit-red {
+  color: #ff5555;
+}
+
+.joker-suit-black {
+  color: #111;
+  text-shadow: 0 0 2px #fff, 0 0 4px #fff;
 }

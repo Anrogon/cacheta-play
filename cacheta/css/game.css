@@ -936,7 +936,7 @@
 
 
 .joker-mini-label{
-  margin-right: 5px;
+  margin-right: 0px;
   font-weight: 700;
 }
 
@@ -946,6 +946,20 @@
   margin-left: 3px;
   vertical-align: middle;
   border-radius: 3px;
+}
+
+/* CORINGAS — CARTAS ACIMA DO TEXTO, SOMENTE DESKTOP */
+@media (min-width: 901px) {
+  .joker-mini-cards {
+    display: flex;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .joker-mini-label {
+    margin-top: 5px;
+    text-align: center;
+  }
 }
 
 /* 
@@ -1083,3 +1097,4 @@
 .endmatch-btn:active{
   transform: translateY(1px);
 }
+

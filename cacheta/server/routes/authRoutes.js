@@ -267,7 +267,7 @@ router.post("/forgot-password", async (req, res) => {
   const genericResponse = {
     ok: true,
     message:
-      "Se o e-mail estiver cadastrado, você receberá um link de recuperação de senha.",
+      "Solicitação recebida! Confira sua caixa de entrada.",
   };
 
   try {

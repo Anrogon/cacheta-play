@@ -944,20 +944,23 @@ if (viraJokerEl) {
       naipe: coringaNaipes[1]
     };
 
+    const simbolosNaipes = {
+      copas: "♥",
+      ouros: "♦",
+      paus: "♣",
+      espadas: "♠"
+    };
+
+    const naipe1 = simbolosNaipes[coringaNaipes[0]] || coringaNaipes[0];
+    const naipe2 = simbolosNaipes[coringaNaipes[1]] || coringaNaipes[1];
+
     viraJokerEl.innerHTML = `
       <span class="joker-mini-label">Coringas:</span>
-
-      <img
-        class="joker-mini-card"
-        src="${getCardImage(card1)}"
-        alt="${coringaValor} ${coringaNaipes[0]}"
-      >
-
-      <img
-        class="joker-mini-card"
-        src="${getCardImage(card2)}"
-        alt="${coringaValor} ${coringaNaipes[1]}"
-      >
+      <span class="joker-mini-values">
+        <span class="joker-suit-${["♥", "♦"].includes(naipe1) ? "red" : "black"}">${coringaValor}${naipe1}</span>
+        e
+        <span class="joker-suit-${["♥", "♦"].includes(naipe2) ? "red" : "black"}">${coringaValor}${naipe2}</span>
+      </span>
     `;
 
     return;
@@ -2749,9 +2752,12 @@ export function renderEndMatchOverlay() {
     rootEl.appendChild(ov);
   }
 
-  const winner = state.players?.find(
-    p => Number(p.seat) === Number(state.matchWinnerSeat)
-  );
+  const winner =
+    state.seats?.[Number(state.matchWinnerSeat) - 1] ||
+    state.players?.find(
+      p => Number(p.seat) === Number(state.matchWinnerSeat)
+    );
+
   const winnerName = winner?.name || "—";
 
   const matchPot = Number(state.matchPot) || 0;
